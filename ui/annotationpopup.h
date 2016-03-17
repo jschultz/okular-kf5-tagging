@@ -18,6 +18,7 @@
 namespace Okular {
 class Annotation;
 class Document;
+class Tagging;
 }
 
 class AnnotationPopup : public QObject
@@ -38,33 +39,58 @@ class AnnotationPopup : public QObject
 
         void addAnnotation( Okular::Annotation* annotation, int pageNumber );
 
+        void addTagging( Okular::Tagging* tagging, int pageNumber );
+
         void exec( const QPoint &point = QPoint() );
 
     Q_SIGNALS:
         void openAnnotationWindow( Okular::Annotation *annotation, int pageNumber );
+        void openTaggingWindow( Okular::Tagging *tagging, int pageNumber );
 
     public:
-        struct AnnotPagePair {
-            AnnotPagePair() : annotation( 0 ),  pageNumber( -1 )
+        struct AnnotOrTagPagePair {
+            AnnotOrTagPagePair() : annotation( 0 ),  tagging( 0 ), pageNumber( -1 )
             { }
 
-            AnnotPagePair( Okular::Annotation *a, int pn ) : annotation( a ),  pageNumber( pn )
+            AnnotOrTagPagePair( Okular::Annotation *a, int pn ) : annotation( a ),  tagging( 0 ), pageNumber( pn )
             { }
-            
-            AnnotPagePair( const AnnotPagePair & pair ) : annotation( pair.annotation ),  pageNumber( pair.pageNumber )
+
+            AnnotOrTagPagePair( Okular::Tagging *t, int pn ) : annotation( 0 ),  tagging( t ), pageNumber( pn )
             { }
-            
-            bool operator==( const AnnotPagePair & pair ) const
-            { return annotation == pair.annotation && pageNumber == pair.pageNumber; }
-            
+
+            AnnotOrTagPagePair( const AnnotOrTagPagePair & pair ) : annotation( pair.annotation ), tagging( pair.tagging ),  pageNumber( pair.pageNumber )
+            { }
+
+            bool operator==( const AnnotOrTagPagePair & pair ) const
+            { return annotation == pair.annotation && tagging == pair.tagging && pageNumber == pair.pageNumber; }
+
             Okular::Annotation* annotation;
+            Okular::Tagging* tagging;
+            int pageNumber;
+        };
+
+    public:
+        struct TaggingPagePair {
+            TaggingPagePair() : tagging( 0 ),  pageNumber( -1 )
+            { }
+
+            TaggingPagePair( Okular::Tagging *a, int pn ) : tagging( a ),  pageNumber( pn )
+            { }
+
+            TaggingPagePair( const TaggingPagePair & pair ) : tagging( pair.tagging ),  pageNumber( pair.pageNumber )
+            { }
+
+            bool operator==( const TaggingPagePair & pair ) const
+            { return tagging == pair.tagging && pageNumber == pair.pageNumber; }
+
+            Okular::Tagging* tagging;
             int pageNumber;
         };
 
     private:
         QWidget *mParent;
 
-        QList< AnnotPagePair > mAnnotations;
+        QList< AnnotOrTagPagePair > mAnnotsAndTags;
         Okular::Document *mDocument;
         MenuMode mMenuMode;
 };

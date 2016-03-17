@@ -29,6 +29,7 @@ target_link_libraries(okularplugin
         Qt5::Xml
         Qt5::Svg
         okularcore
+        okularpart
         KF5::KDELibs4Support
         )
 

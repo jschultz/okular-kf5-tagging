@@ -18,7 +18,7 @@ include(KDEFrameworkCompilerSettings NO_POLICY_SCOPE)
 include(KDEInstallDirs)
 include(KDECMakeSettings)
 include(ECMAddTests)
-include(ECMAddAppIcon) 
+include(ECMAddAppIcon)
 include(ECMPackageConfigHelpers)
 
 ecm_setup_version(1.0.0 VARIABLE_PREFIX OKULAR
@@ -120,6 +120,7 @@ set(okularcore_SRCS
    core/scripter.cpp
    core/sound.cpp
    core/sourcereference.cpp
+   core/tagging.cpp
    core/textdocumentgenerator.cpp
    core/textdocumentsettings.cpp
    core/textpage.cpp
@@ -278,6 +279,8 @@ set(okularpart_SRCS
    ui/sidebar.cpp
    ui/side_reviews.cpp
    ui/snapshottaker.cpp
+   ui/taggingpropertiesdialog.cpp
+   ui/taggingwidgets.cpp
    ui/thumbnaillist.cpp
    ui/toc.cpp
    ui/tocmodel.cpp

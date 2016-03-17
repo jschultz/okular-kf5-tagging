@@ -36,6 +36,8 @@
 #include "pagesize.h"
 #include "pagetransition.h"
 #include "rotationjob_p.h"
+#include "tagging.h"
+#include "tagging_p.h"
 #include "textpage.h"
 #include "textpage_p.h"
 #include "tile.h"
@@ -137,6 +139,7 @@ Page::~Page()
     deleteAnnotations();
     d->deleteTextSelections();
     deleteSourceReferences();
+    deleteTaggings();
 
     delete d;
 }
@@ -677,6 +680,61 @@ bool Page::removeAnnotation( Annotation * annotation )
     return true;
 }
 
+void Page::addTagging( Tagging * tagging)
+{
+    // Generate uniqueName: okular-{UUID}
+    if(tagging->uniqueName().isEmpty())
+    {
+        QString uniqueName = "okular-" + QUuid::createUuid().toString();
+        tagging->setUniqueName( uniqueName );
+    }
+    tagging->d_ptr->m_page = d;
+    m_taggings.append( tagging );
+
+    TaggingObjectRect *rect = new TaggingObjectRect( tagging );
+
+    // Rotate the tagging on the page.
+    const QTransform matrix = d->rotationMatrix();
+    tagging->d_ptr->taggingTransform( matrix );
+
+    m_rects.append( rect );
+}
+
+bool Page::removeTagging( Tagging * tagging )
+{
+    QLinkedList< Tagging * >::iterator tIt = m_taggings.begin(), tEnd = m_taggings.end();
+    for ( ; tIt != tEnd; ++tIt )
+    {
+        if((*tIt) && (*tIt)->uniqueName()==tagging->uniqueName())
+        {
+            int rectfound = false;
+            QLinkedList< ObjectRect * >::iterator it = m_rects.begin(), end = m_rects.end();
+            for ( ; it != end && !rectfound; ++it )
+                if ( ( (*it)->objectType() == ObjectRect::OTagging ) && ( (*it)->object() == (*tIt) ) )
+                {
+                    delete *it;
+                    it = m_rects.erase( it );
+                    rectfound = true;
+                }
+            qCDebug(OkularCoreDebug) << "removed tagging:" << tagging->uniqueName();
+            tagging->d_ptr->m_page = 0;
+            m_taggings.erase( tIt );
+            break;
+        }
+    }
+
+    return true;
+}
+
+void Page::deleteTaggings()
+{
+    // delete all stored taggings
+    QLinkedList< Tagging * >::const_iterator aIt = m_taggings.begin(), aEnd = m_taggings.end();
+    for ( ; aIt != aEnd; ++aIt )
+        delete *aIt;
+    m_taggings.clear();
+}
+
 void Page::setTransition( PageTransition * transition )
 {
     delete d->m_transition;
@@ -829,6 +887,41 @@ void PagePrivate::restoreLocalContents( const QDomNode & pageNode )
             qCDebug(OkularCoreDebug).nospace() << "annots: XML Load time: " << time.elapsed() << "ms";
 #endif
         }
+        // parse annotationList child element
+        else if ( childElement.tagName() == QLatin1String("taggingList") )
+        {
+#ifdef PAGE_PROFILE
+            QTime time;
+            time.start();
+#endif
+            // Clone annotationList as root node in restoredLocalAnnotationList
+            const QDomNode clonedNode = restoredLocalTaggingList.importNode( childElement, true );
+            restoredLocalTaggingList.appendChild( clonedNode );
+
+            // iterate over all annotations
+            QDomNode taggingNode = childElement.firstChild();
+            while( taggingNode.isElement() )
+            {
+                // get annotation element and advance to next annot
+                QDomElement tagElement = taggingNode.toElement();
+                taggingNode = taggingNode.nextSibling();
+
+                // get tagging from the dom element
+                Tagging * tag = TaggingUtils::createTagging( tagElement );
+
+                // append tagging to the list or show warning
+                if ( tag )
+                {
+                    m_doc->performAddPageTagging(m_number, tag);
+                    qCDebug(OkularCoreDebug) << "restored tag:" << tag->uniqueName();
+                }
+                else
+                    qCWarning(OkularCoreDebug).nospace() << "page (" << m_number << "): can't restore a tagging from XML.";
+            }
+#ifdef PAGE_PROFILE
+            qCDebug(OkularCoreDebug).nospace() << "taggings: XML Load time: " << time.elapsed() << "ms";
+#endif
+        }
         // parse formList child element
         else if ( childElement.tagName() == QLatin1String("forms") )
         {
@@ -924,6 +1017,30 @@ void PagePrivate::saveLocalContents( QDomNode & parentNode, QDomDocument & docum
         // append the annotationList element if annotations have been set
         if ( annotListElement.hasChildNodes() )
             pageElement.appendChild( annotListElement );
+    }
+
+    // add tagging info if has got any
+    if ( ( what & TaggingPageItems ) && !m_page->m_taggings.isEmpty() )
+    {
+        // create the taggingList
+        QDomElement tagListElement = document.createElement( "taggingList" );
+
+        // add every tagging to the taggingList
+        QLinkedList< Tagging * >::const_iterator tIt = m_page->m_taggings.constBegin(), tEnd = m_page->m_taggings.constEnd();
+        for ( ; tIt != tEnd; ++tIt )
+        {
+            // get tagging
+            const Tagging * t = *tIt;
+            // append an filled-up element called 'tagging' to the list
+            QDomElement tagElement = document.createElement( "tagging" );
+            TaggingUtils::storeTagging( t, tagElement, document );
+            tagListElement.appendChild( tagElement );
+            qCDebug(OkularCoreDebug) << "save tagging:" << t->uniqueName();
+        }
+
+        // append the taggingList element if taggings have been set
+        if ( tagListElement.hasChildNodes() )
+            pageElement.appendChild( tagListElement );
     }
 
     // add forms info if has got any

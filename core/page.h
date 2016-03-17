@@ -15,6 +15,7 @@
 #include "okularcore_export.h"
 #include "area.h"
 #include "global.h"
+#include "tagging.h"
 #include "textpage.h"
 
 class QPixmap;
@@ -31,6 +32,7 @@ class FormField;
 class PagePrivate;
 class PageTransition;
 class SourceReference;
+class Tagging;
 class TextSelection;
 class Tile;
 
@@ -138,7 +140,7 @@ class OKULARCORE_EXPORT Page
         void setBoundingBox( const NormalizedRect& bbox );
 
         /**
-         * Returns whether the page of size @p width x @p height has a @p pixmap 
+         * Returns whether the page of size @p width x @p height has a @p pixmap
          * in the region given by @p rect for the given @p observer
          */
         bool hasPixmap( DocumentObserver *observer, int width = -1, int height = -1, const NormalizedRect &rect = NormalizedRect() ) const;
@@ -206,7 +208,7 @@ class OKULARCORE_EXPORT Page
          * @since 0.14 (KDE 4.8)
          */
         TextEntity::List words( const RegularAreaRect * rect, TextPage::TextAreaInclusionBehaviour b ) const;
-        
+
         /**
          * Returns the area and text of the word at the given point
          * Note that ownership of the returned area belongs to the caller.
@@ -329,6 +331,26 @@ class OKULARCORE_EXPORT Page
         bool removeAnnotation( Annotation * annotation );
 
         /**
+         * Returns the list of taggings of the document.
+         */
+        QLinkedList< Tagging* > taggings() const;
+
+        /**
+         * Adds a new @p tagging to the document.
+         */
+        void addTagging( Tagging * tagging );
+
+        /**
+         * Removes the @p tagging from the document.
+         */
+        bool removeTagging( Tagging * tagging );
+
+        /**
+         * Deletes all taggings of the document.
+         */
+        void deleteTaggings();
+
+        /**
          * Sets the page @p transition effect.
          */
         void setTransition( PageTransition * transition );
@@ -405,6 +427,7 @@ class OKULARCORE_EXPORT Page
         QLinkedList< ObjectRect* > m_rects;
         QLinkedList< HighlightAreaRect* > m_highlights;
         QLinkedList< Annotation* > m_annotations;
+        QLinkedList< Tagging* > m_taggings;
 
         Q_DISABLE_COPY( Page )
 };

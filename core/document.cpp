@@ -80,6 +80,8 @@
 #include "settings_core.h"
 #include "sourcereference.h"
 #include "sourcereference_p.h"
+#include "tagging.h"
+#include "tagging_p.h"
 #include "texteditors_p.h"
 #include "tile.h"
 #include "tilesmanager_p.h"
@@ -1204,6 +1206,37 @@ void DocumentPrivate::performSetAnnotationContents( const QString & newContents,
     performModifyPageAnnotation( pageNumber,  annot, appearanceChanged );
 }
 
+void DocumentPrivate::performAddPageTagging( int page, Tagging * tagging )
+{
+    // find out the page to attach tagging
+    Page * kp = m_pagesVector[ page ];
+    if ( !m_generator || !kp )
+        return;
+
+    // the tagging belongs already to a page
+    if ( tagging->d_ptr->m_page )
+        return;
+
+    // add tagging to the page
+    kp->addTagging( tagging );
+
+    // notify observers about the change
+    notifyTaggingChanges( page );
+}
+
+void DocumentPrivate::performRemovePageTagging( int page, Tagging * tagging )
+{
+    Page * kp = m_pagesVector[ page ];
+    kp->removeTagging( tagging ); // Also destroys the object
+
+    // in case of success, notify observers about the change
+    notifyTaggingChanges( page );
+}
+
+void DocumentPrivate::performModifyPageTagging( int page, Tagging * tagging, bool appearanceChanged )
+{
+}
+
 void DocumentPrivate::saveDocumentInfo() const
 {
     if ( m_xmlFileName.isEmpty() )
@@ -1504,7 +1537,7 @@ void DocumentPrivate::rotationFinished( int page, Okular::Page *okularPage )
         return;
 
     foreach(DocumentObserver *o, m_observers)
-        o->notifyPageChanged( page, DocumentObserver::Pixmap | DocumentObserver::Annotations );
+        o->notifyPageChanged( page, DocumentObserver::Pixmap | DocumentObserver::Annotations | DocumentObserver::Taggings );
 }
 
 void DocumentPrivate::fontReadingProgress( int page )
@@ -3343,6 +3376,70 @@ void Document::removePageAnnotations( int page, const QList<Annotation*> &annota
     d->m_undoStack->endMacro();
 }
 
+void DocumentPrivate::notifyTaggingChanges( int page )
+{
+    int flags = DocumentObserver::Taggings;
+
+    foreachObserverD( notifyPageChanged( page, flags ) );
+}
+
+void Document::addPageTagging( int page, Tagging * tagging )
+{
+    // Transform annotation's base boundary rectangle into unrotated coordinates
+    Page *p = d->m_pagesVector[page];
+    QTransform t = p->d->rotationMatrix();
+    tagging->d_ptr->baseTransform(t.inverted());
+    QUndoCommand *uc = new AddTaggingCommand(this->d, tagging, page);
+    d->m_undoStack->push(uc);
+}
+
+void Document::removePageTagging( int page, Tagging * tagging )
+{
+    QUndoCommand *uc = new RemoveTaggingCommand(this->d, tagging, page);
+    d->m_undoStack->push(uc);
+}
+
+bool Document::canModifyPageTagging( const Tagging * tagging ) const
+{
+    switch ( tagging->subType() )
+    {
+        case Tagging::TText:
+        case Tagging::TBox:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void Document::prepareToModifyTaggingProperties( Tagging * tagging )
+{
+    Q_ASSERT(d->m_prevPropsOfAnnotBeingModified.isNull());
+    if (!d->m_prevPropsOfAnnotBeingModified.isNull())
+    {
+        qCCritical(OkularCoreDebug) << "Error: Document::prepareToModifyTaggingProperties has already been called since last call to Document::modifyPageTaggingProperties";
+        return;
+    }
+    d->m_prevPropsOfAnnotBeingModified = tagging->getTaggingPropertiesDomNode();
+}
+
+void Document::modifyPageTaggingProperties( int page, Tagging * tagging )
+{
+    Q_ASSERT(!d->m_prevPropsOfAnnotBeingModified.isNull());
+    if (d->m_prevPropsOfAnnotBeingModified.isNull())
+    {
+        qCCritical(OkularCoreDebug) << "Error: Document::prepareToModifyTaggingProperties must be called before Tagging is modified";
+        return;
+    }
+    QDomNode prevProps = d->m_prevPropsOfAnnotBeingModified;
+    QUndoCommand *uc = new Okular::ModifyTaggingPropertiesCommand( d,
+                                                                      tagging,
+                                                                      page,
+                                                                      prevProps,
+                                                                      tagging->getTaggingPropertiesDomNode() );
+    d->m_undoStack->push( uc );
+    d->m_prevPropsOfAnnotBeingModified.clear();
+}
+
 bool DocumentPrivate::canAddAnnotationsNatively() const
 {
     Okular::SaveInterface * iface = qobject_cast< Okular::SaveInterface * >( m_generator );
@@ -4764,7 +4861,7 @@ void DocumentPrivate::setRotationInternal( int r, bool notify )
     if ( notify )
     {
         foreachObserverD( notifySetup( m_pagesVector, DocumentObserver::NewLayoutForPages ) );
-        foreachObserverD( notifyContentsCleared( DocumentObserver::Pixmap | DocumentObserver::Highlights | DocumentObserver::Annotations ) );
+        foreachObserverD( notifyContentsCleared( DocumentObserver::Pixmap | DocumentObserver::Highlights | DocumentObserver::Annotations | DocumentObserver::Taggings ) );
     }
     qCDebug(OkularCoreDebug) << "Rotated:" << r;
 }

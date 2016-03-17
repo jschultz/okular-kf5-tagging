@@ -519,6 +519,30 @@ class OKULARCORE_EXPORT Document : public QObject
         void modifyPageAnnotationProperties( int page, Annotation * annotation );
 
         /**
+         * Tests if the @p tagging can be modified
+         *
+         * @since 0.15 (KDE 4.9)
+         */
+        bool canModifyPageTagging( const Tagging * tagging ) const;
+
+        /**
+         *  Prepares to modify the properties of the given @p tagging.
+         *  Must be called before the tagging's properties are modified
+         *
+         * @since 0.17 (KDE 4.11)
+         */
+        void prepareToModifyTaggingProperties( Tagging * tagging );
+
+        /**
+         * Modifies the given @p tagging on the given @p page.
+         * Must be preceded by a call to prepareToModifyTaggingProperties before
+         * the tagging's properties are modified
+         *
+         * @since 0.17 (KDE 4.11)
+         */
+        void modifyPageTaggingProperties( int page, Tagging * tagging );
+
+        /**
          * Translates the position of the given @p annotation on the given @p page by a distance @p delta in normalized coordinates.
          *
          * Consecutive translations applied to the same @p annotation are merged together on the undo stack if the
@@ -559,6 +583,16 @@ class OKULARCORE_EXPORT Document : public QObject
          * Removes the given @p annotations from the given @p page.
          */
         void removePageAnnotations( int page, const QList<Annotation*> &annotations );
+
+        /**
+         * Adds a new @p annotation to the given @p page.
+         */
+        void addPageTagging( int page, Tagging *tagging );
+
+        /**
+         * Removes the given @p tagging from the given @p page.
+         */
+        void removePageTagging( int page, Tagging *tagging );
 
         /**
          * Sets the text selection for the given @p page.

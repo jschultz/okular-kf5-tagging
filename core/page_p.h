@@ -44,6 +44,7 @@ enum PageItem
     None = 0,
     AnnotationPageItems = 0x01,
     FormFieldPageItems = 0x02,
+    TaggingPageItems = 0x04,
     AllPageItems = 0xff,
 
     /* If set along with AnnotationPageItems, tells saveLocalContents to save
@@ -142,6 +143,7 @@ class PagePrivate
 
         bool m_isBoundingBoxKnown : 1;
         QDomDocument restoredLocalAnnotationList; // <annotationList>...</annotationList>
+        QDomDocument restoredLocalTaggingList; // <annotationList>...</annotationList>
 };
 
 }
