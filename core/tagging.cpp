@@ -295,6 +295,11 @@ void Tagging::setTaggingProperties( const QDomNode& node )
    d_ptr->transform( d_ptr->m_page->rotationMatrix() );
 }
 
+const Page * Tagging::page() const
+{
+    return d_ptr->m_page->m_page;
+}
+
 double TaggingPrivate::distanceSqr( double x, double y, double xScale, double yScale )
 {
     return m_transformedBoundary.distanceSqr( x, y, xScale, yScale );

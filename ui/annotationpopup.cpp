@@ -22,6 +22,7 @@
 #include "core/annotations.h"
 #include "core/document.h"
 #include "core/page.h"
+#include "core/tagging.h"
 #include "guiutils.h"
 
 Q_DECLARE_METATYPE( AnnotationPopup::AnnotOrTagPagePair )
@@ -237,41 +238,37 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
             Okular::EmbeddedFile *embeddedFile = embeddedFileFromAnnotation( pair.annotation );
             GuiUtils::saveEmbeddedFile( embeddedFile, mParent );
         } else if( actionType == copyId ) {
-            const QVector< PageViewItem * > items = pageView->items();
-
-            PageViewItem * pageItem = pageView->pickItemOnPoint( point.x(), point.y() );
-            QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
-            for ( ; iIt != iEnd; ++iIt )
+            switch ( pair.tagging->subType() )
             {
-                PageViewItem * item = *iIt;
-                const Okular::Page *okularPage = item->page();
-                if ( okularPage->number() != pageItem->page()->number()
-                ||  !item->isVisible() )
-                    continue;
-
-                QRect tagRect   = pair.tagging->transformedBoundingRectangle().geometry( item->uncroppedWidth(), item->uncroppedHeight() ).translated( item->uncroppedGeometry().topLeft() );
-                QRect itemRect  = item->croppedGeometry();
-                QRect intersect = tagRect.intersect (itemRect);
-                if ( !intersect.isNull() )
+                case Okular::Tagging::TBox:
                 {
-                    switch ( pair.tagging->subType() )
+                    const QVector< PageViewItem * > items = pageView->items();
+
+                    QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
+                    for ( ; iIt != iEnd; ++iIt )
                     {
-                        case Okular::Tagging::TText:
+                        PageViewItem * item = *iIt;
+                        const Okular::Page *okularPage = item->page();
+                        if ( okularPage != pair.tagging->page()
+                        ||  !item->isVisible() )
+                            continue;
+
+                        QRect tagRect   = pair.tagging->transformedBoundingRectangle().geometry( item->uncroppedWidth(), item->uncroppedHeight() ).translated( item->uncroppedGeometry().topLeft() );
+                        QRect itemRect  = item->croppedGeometry();
+                        QRect intersect = tagRect.intersect (itemRect);
+                        if ( !intersect.isNull() )
                         {
-                            intersect.translate( -item->uncroppedGeometry().topLeft() );
-                            Okular::RegularAreaRect rects;
-                            rects.append( Okular::NormalizedRect( intersect, item->uncroppedWidth(), item->uncroppedHeight() ) );
-                            QString tagText = okularPage->text( &rects );
-                            QClipboard *cb = QApplication::clipboard();
-                            cb->setText( tagText, QClipboard::Clipboard );
-                            if ( cb->supportsSelection() )
-                                cb->setText( tagText, QClipboard::Selection );
+//  This is code to select text in a rectangle
+//                             intersect.translate( -item->uncroppedGeometry().topLeft() );
+//                             Okular::RegularAreaRect rects;
+//                             rects.append( Okular::NormalizedRect( intersect, item->uncroppedWidth(), item->uncroppedHeight() ) );
+//                             QString tagText = okularPage->text( &rects, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+//                             QClipboard *cb = QApplication::clipboard();
+//                             cb->setText( tagText, QClipboard::Clipboard );
+//                             if ( cb->supportsSelection() )
+//                                 cb->setText( tagText, QClipboard::Selection );
 //                             d->messageWindow->display( i18n( "Text (%1 characters) copied to clipboard.", tagText.length() ) );
 
-                            break;
-                        }
-                        case Okular::Tagging::TBox:
-                        {
                             // renders page into a pixmap
                             QPixmap copyPix( tagRect.width(), tagRect.height() );
                             QPainter copyPainter( &copyPix );
@@ -283,13 +280,21 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
                             if ( cb->supportsSelection() )
                                 cb->setPixmap( copyPix, QClipboard::Selection );
 //                             d->messageWindow->display( i18n( "Image [%1x%2] copied to clipboard.", copyPix.width(), copyPix.height() ) );
-
-                            break;
                         }
                     }
+                    break;
+                }
+                case Okular::Tagging::TText:
+                {
+                    Okular::TextTagging * textTagging = static_cast< Okular::TextTagging * >(pair.tagging);
+                    QString tagText = textTagging->page()->text( textTagging->transformedTextArea(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+                    QClipboard *cb = QApplication::clipboard();
+                    cb->setText( tagText, QClipboard::Clipboard );
+                    if ( cb->supportsSelection() )
+                        cb->setText( tagText, QClipboard::Selection );
+                    break;
                 }
             }
-
         }
     }
 }

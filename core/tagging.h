@@ -240,6 +240,11 @@ class OKULARCORE_EXPORT Tagging
          */
         void setTaggingProperties( const QDomNode & node );
 
+        /**
+         * Returns the page to which the tagging is attached
+         */
+        const Page * page() const;
+
 
     protected:
         /// @cond PRIVATE
