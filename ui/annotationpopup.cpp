@@ -10,6 +10,9 @@
 #include "annotationpopup.h"
 
 #include <KLocalizedString>
+#include <qapplication.h>
+#include <qclipboard.h>
+#include <qpainter.h>
 #include <QMenu>
 #include <QIcon>
 
@@ -18,6 +21,7 @@
 
 #include "core/annotations.h"
 #include "core/document.h"
+#include "core/page.h"
 #include "guiutils.h"
 
 Q_DECLARE_METATYPE( AnnotationPopup::AnnotOrTagPagePair )
@@ -70,6 +74,11 @@ void AnnotationPopup::addTagging( Okular::Tagging* tagging, int pageNumber )
 }
 
 void AnnotationPopup::exec( const QPoint &point )
+{
+    exec( 0, point );
+}
+
+void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
 {
     if ( mAnnotsAndTags.isEmpty() && mAnnotsAndTags.isEmpty() )
         return;
@@ -200,11 +209,12 @@ void AnnotationPopup::exec( const QPoint &point )
             else
                 emit openTaggingWindow( pair.tagging, pair.pageNumber );
         } else if( actionType == deleteId ) {
-            if ( pair.pageNumber != -1 )
+            if ( pair.pageNumber != -1 ) {
                 if ( pair.annotation )
                     mDocument->removePageAnnotation( pair.pageNumber, pair.annotation );
                 else
                     mDocument->removePageTagging( pair.pageNumber, pair.tagging );
+            }
         } else if( actionType == deleteAllId ) {
             Q_FOREACH ( const AnnotOrTagPagePair& pair, mAnnotsAndTags )
             {
@@ -227,8 +237,10 @@ void AnnotationPopup::exec( const QPoint &point )
             Okular::EmbeddedFile *embeddedFile = embeddedFileFromAnnotation( pair.annotation );
             GuiUtils::saveEmbeddedFile( embeddedFile, mParent );
         } else if( actionType == copyId ) {
-#### This all needs to be worked out.
-            QVector< PageViewItem * >::const_iterator iIt = d->items.constBegin(), iEnd = d->items.constEnd();
+            const QVector< PageViewItem * > items = pageView->items();
+
+            PageViewItem * pageItem = pageView->pickItemOnPoint( point.x(), point.y() );
+            QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
             for ( ; iIt != iEnd; ++iIt )
             {
                 PageViewItem * item = *iIt;
@@ -254,7 +266,7 @@ void AnnotationPopup::exec( const QPoint &point )
                             cb->setText( tagText, QClipboard::Clipboard );
                             if ( cb->supportsSelection() )
                                 cb->setText( tagText, QClipboard::Selection );
-                            d->messageWindow->display( i18n( "Text (%1 characters) copied to clipboard.", tagText.length() ) );
+//                             d->messageWindow->display( i18n( "Text (%1 characters) copied to clipboard.", tagText.length() ) );
 
                             break;
                         }
@@ -264,13 +276,13 @@ void AnnotationPopup::exec( const QPoint &point )
                             QPixmap copyPix( tagRect.width(), tagRect.height() );
                             QPainter copyPainter( &copyPix );
                             copyPainter.translate( -tagRect.left(), -tagRect.top() );
-                            drawDocumentOnPainter( tagRect, &copyPainter );
+                            pageView->drawDocumentOnPainter( tagRect, &copyPainter );
                             copyPainter.end();
                             QClipboard *cb = QApplication::clipboard();
                             cb->setPixmap( copyPix, QClipboard::Clipboard );
                             if ( cb->supportsSelection() )
                                 cb->setPixmap( copyPix, QClipboard::Selection );
-                            d->messageWindow->display( i18n( "Image [%1x%2] copied to clipboard.", copyPix.width(), copyPix.height() ) );
+//                             d->messageWindow->display( i18n( "Image [%1x%2] copied to clipboard.", copyPix.width(), copyPix.height() ) );
 
                             break;
                         }

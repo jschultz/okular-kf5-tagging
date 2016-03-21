@@ -10,6 +10,8 @@
 #ifndef ANNOTATIONPOPUP_H
 #define ANNOTATIONPOPUP_H
 
+#include "pageview.h"
+
 #include <QtCore/QObject>
 #include <QtCore/QList>
 #include <QtCore/QPair>
@@ -18,6 +20,7 @@
 namespace Okular {
 class Annotation;
 class Document;
+class PageViewItem;
 class Tagging;
 }
 
@@ -42,6 +45,7 @@ class AnnotationPopup : public QObject
         void addTagging( Okular::Tagging* tagging, int pageNumber );
 
         void exec( const QPoint &point = QPoint() );
+        void exec( PageView *pageView, const QPoint &point = QPoint() );
 
     Q_SIGNALS:
         void openAnnotationWindow( Okular::Annotation *annotation, int pageNumber );

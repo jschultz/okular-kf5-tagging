@@ -52,6 +52,10 @@ class PageView : public QAbstractScrollArea, public Okular::DocumentObserver, pu
 {
 Q_OBJECT
 
+    /// @cond PRIVATE
+    friend class AnnotationPopup;
+    /// @endcond
+
     public:
         PageView( QWidget *parent, Okular::Document *document );
         ~PageView();
@@ -145,13 +149,17 @@ Q_OBJECT
 
         void scrollContentsBy( int dx, int dy ) Q_DECL_OVERRIDE;
 
-    private:
         // draw background and items on the opened qpainter
         void drawDocumentOnPainter( const QRect & pageViewRect, QPainter * p );
-        // update item width and height using current zoom parameters
-        void updateItemSize( PageViewItem * item, int columnWidth, int rowHeight );
         // return the widget placed on a certain point or 0 if clicking on empty space
         PageViewItem * pickItemOnPoint( int x, int y );
+        // return the list of pave view items
+        const QVector< PageViewItem * > items( );
+
+
+    private:
+        // update item width and height using current zoom parameters
+        void updateItemSize( PageViewItem * item, int columnWidth, int rowHeight );
         // start / modify / clear selection rectangle
         void selectionStart( const QPoint & pos, const QColor & color, bool aboveAll = false );
         void selectionClear( const ClearMode mode = ClearAllSelection );

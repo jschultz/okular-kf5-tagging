@@ -2230,7 +2230,7 @@ void PageView::mousePressEvent( QMouseEvent * e )
                         connect( &popup, &AnnotationPopup::openAnnotationWindow,
                                  this, &PageView::openAnnotationWindow );
 
-                        popup.exec( e->globalPos() );
+                        popup.exec( this, e->globalPos() );
                     }
 
                 }
@@ -2720,7 +2720,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                         relativeRect.translate( -item->uncroppedGeometry().topLeft() );
                         Okular::RegularAreaRect rects;
                         rects.append( Okular::NormalizedRect( relativeRect, item->uncroppedWidth(), item->uncroppedHeight() ) );
-                        selectedText += okularPage->text( &rects );
+                        selectedText += okularPage->text( &rects, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
                     }
                 }
             }
@@ -3736,6 +3736,11 @@ PageViewItem * PageView::pickItemOnPoint( int x, int y )
         }
     }
     return item;
+}
+
+const QVector< PageViewItem * > PageView::items( )
+{
+    return d->items;
 }
 
 void PageView::textSelectionClear()

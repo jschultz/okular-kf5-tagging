@@ -155,14 +155,14 @@ Reviews::~Reviews()
     m_document->removeObserver( this );
 }
 
-//BEGIN DocumentObserver Notifies 
+//BEGIN DocumentObserver Notifies
 void Reviews::notifyCurrentPageChanged( int previousPage, int currentPage )
 {
     Q_UNUSED( previousPage )
 
     m_filterProxy->setCurrentPage( currentPage );
 }
-//END DocumentObserver Notifies 
+//END DocumentObserver Notifies
 
 void Reviews::reparseConfig()
 {
@@ -246,7 +246,7 @@ QModelIndexList Reviews::retrieveAnnotations(const QModelIndex& idx) const
             ret += idx;
         }
     }
-    
+
     return ret;
 }
 
