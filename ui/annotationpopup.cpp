@@ -287,6 +287,10 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
                 case Okular::Tagging::TText:
                 {
                     Okular::TextTagging * textTagging = static_cast< Okular::TextTagging * >(pair.tagging);
+                    const Okular::Page * okularPage = textTagging->page();
+                    if ( !okularPage->hasTextPage() )
+                        mDocument->requestTextPage( okularPage->number() );
+
                     QString tagText = textTagging->page()->text( textTagging->transformedTextArea(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
                     QClipboard *cb = QApplication::clipboard();
                     cb->setText( tagText, QClipboard::Clipboard );
