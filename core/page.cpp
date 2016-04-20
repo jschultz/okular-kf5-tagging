@@ -324,6 +324,31 @@ QString Page::text( const RegularAreaRect * area, TextPage::TextAreaInclusionBeh
     return ret;
 }
 
+Okular::TextReference* Page::reference( const RegularAreaRect * area ) const
+{
+    return reference( area, TextPage::AnyPixelTextAreaInclusionBehaviour );
+}
+
+Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::TextAreaInclusionBehaviour b ) const
+{
+    Okular::TextReference* ret;
+
+    if ( !d->m_text )
+        return 0;
+
+    if ( area )
+    {
+        RegularAreaRect rotatedArea = *area;
+        rotatedArea.transform( d->rotationMatrix().inverted() );
+
+        ret = d->m_text->reference( &rotatedArea, b );
+    }
+    else
+        ret = d->m_text->reference( 0, b );
+
+    return ret;
+}
+
 TextEntity::List Page::words( const RegularAreaRect * area, TextPage::TextAreaInclusionBehaviour b ) const
 {
     TextEntity::List ret;

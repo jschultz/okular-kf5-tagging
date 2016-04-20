@@ -82,6 +82,45 @@ class OKULARCORE_EXPORT TextEntity
         Q_DISABLE_COPY( TextEntity )
 };
 
+/*! @class TextReference
+ * @short Abstract text offset of Okular
+ * @par The context
+ * For the purpose of identifying sections of (unformatted) text, the TextOffset structure contains
+ * the offset (relative to the entire document and length of a chunk of text.
+ */
+class OKULARCORE_EXPORT TextReference
+{
+    public:
+        typedef QList<TextReference*> List;
+
+        /**
+         * Creates a new text entity with the given @p offset and the
+         * given @p length.
+         */
+        TextReference( uint offset, uint length );
+
+        /**
+         * Destroys the text entity.
+         */
+        ~TextReference();
+
+        /**
+         * Returns the offset of the first character.
+         */
+        uint offset() const;
+
+        /**
+         * Returns the length of the text ching.
+         */
+        uint length() const;
+
+    private:
+        uint m_offset;
+        uint m_length;
+
+        Q_DISABLE_COPY( TextReference )
+};
+
 /**
  * The TextPage class represents the text of a page by
  * providing @see TextEntity items for every word/character of
@@ -164,6 +203,11 @@ class OKULARCORE_EXPORT TextPage
         QString text( const RegularAreaRect * rect, TextAreaInclusionBehaviour b ) const;
 
         /**
+         * Text reference function.
+         */
+        Okular::TextReference* reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const;
+
+        /**
          * Text entity extraction function. Similar to text() but returns
          * the words including their bounding rectangles. Note that
          * ownership of the contents of the returned list belongs to the
@@ -184,6 +228,11 @@ class OKULARCORE_EXPORT TextPage
          */
         RegularAreaRect *textArea( TextSelection *selection ) const;
 
+        /**
+         * Returns the area defined by the list of text references.
+         */
+        RegularAreaRect *TextReferenceArea ( TextReference &ref ) const;
+
     private:
         TextPagePrivate* const d;
 
@@ -192,4 +241,4 @@ class OKULARCORE_EXPORT TextPage
 
 }
 
-#endif 
+#endif

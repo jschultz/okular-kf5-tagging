@@ -201,6 +201,18 @@ class OKULARCORE_EXPORT Page
         QString text( const RegularAreaRect * rect, TextPage::TextAreaInclusionBehaviour b ) const;
 
         /**
+         * Returns the page reference (or part of it).
+         * @see TextPage::reference()
+         */
+        Okular::TextReference* reference( const RegularAreaRect * rect = 0 ) const;
+
+        /**
+         * Returns the page reference (or part of it).
+         * @see TextPage::reference()
+         */
+        Okular::TextReference* reference( const RegularAreaRect * rect, TextPage::TextAreaInclusionBehaviour b ) const;
+
+        /**
          * Returns the page text (or part of it) including the bounding
          * rectangles. Note that ownership of the contents of the returned
          * list belongs to the caller.

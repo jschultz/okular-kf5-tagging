@@ -70,7 +70,6 @@ class TextPagePrivate
         QMap< int, SearchPoint* > m_searchPoints;
         PagePrivate *m_page;
 
-    private:
         RegularAreaRect * searchPointToArea(const SearchPoint* sp);
 };
 

@@ -129,6 +129,7 @@ public:
     OkularTTS* tts();
 #endif
     QString selectedText() const;
+    Okular::TextReference* selectedTextReference() const;
 
     // the document, pageviewItems and the 'visible cache'
     PageView *q;
@@ -910,6 +911,38 @@ QString PageViewPrivate::selectedText() const
     }
     return text;
 }
+
+Okular::TextReference* PageViewPrivate::selectedTextReference() const
+{
+    if ( pagesWithTextSelection.isEmpty() )
+        return 0;
+
+    Okular::TextReference* ret;
+    QList< int > selpages = pagesWithTextSelection.toList();
+    qSort( selpages );
+    const Okular::Page * pg = 0;
+    if ( selpages.count() == 1 )
+    {
+        pg = document->page( selpages.first() );
+        ret = pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+    }
+//  JS: TBC
+//     else
+//     {
+//         pg = document->page( selpages.first() );
+//         text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+//         int end = selpages.count() - 1;
+//         for( int i = 1; i < end; ++i )
+//         {
+//             pg = document->page( selpages.at( i ) );
+//             text.append( pg->text( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+//         }
+//         pg = document->page( selpages.last() );
+//         text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+//     }
+    return ret;
+}
+
 
 void PageView::copyTextSelection() const
 {
