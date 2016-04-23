@@ -20,6 +20,7 @@
 
 #include "okularcore_export.h"
 #include "area.h"
+#include "core/textpage.h"
 
 namespace Okular {
 
@@ -266,7 +267,9 @@ class OKULARCORE_EXPORT TextTagging : public Tagging
          */
         TextTagging();
 
-        TextTagging( const RegularAreaRect * );
+        TextTagging( const TextReference * ref );
+	
+	TextTagging( const RegularAreaRect * textArea );
 
         /**
          * Creates a new text tagging from the xml @p description
@@ -283,7 +286,8 @@ class OKULARCORE_EXPORT TextTagging : public Tagging
          */
         SubType subType() const;
 
-        const RegularAreaRect * transformedTextArea () const;
+	const RegularAreaRect * transformedTextArea () const;
+        const TextReference * reference() const;
 
         /**
          * Stores the tagging as xml in @p document under the given parent @p node.

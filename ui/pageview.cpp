@@ -129,7 +129,7 @@ public:
     OkularTTS* tts();
 #endif
     QString selectedText() const;
-    Okular::TextReference* selectedTextReference() const;
+    Okular::TextReference::List selectedTextReferences() const;
 
     // the document, pageviewItems and the 'visible cache'
     PageView *q;
@@ -912,34 +912,31 @@ QString PageViewPrivate::selectedText() const
     return text;
 }
 
-Okular::TextReference* PageViewPrivate::selectedTextReference() const
+Okular::TextReference::List PageViewPrivate::selectedTextReferences() const
 {
-    if ( pagesWithTextSelection.isEmpty() )
-        return 0;
+    Okular::TextReference::List ret;
 
-    Okular::TextReference* ret;
     QList< int > selpages = pagesWithTextSelection.toList();
     qSort( selpages );
     const Okular::Page * pg = 0;
     if ( selpages.count() == 1 )
     {
         pg = document->page( selpages.first() );
-        ret = pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+        ret.append ( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
     }
-//  JS: TBC
-//     else
-//     {
-//         pg = document->page( selpages.first() );
-//         text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-//         int end = selpages.count() - 1;
-//         for( int i = 1; i < end; ++i )
-//         {
-//             pg = document->page( selpages.at( i ) );
-//             text.append( pg->text( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-//         }
-//         pg = document->page( selpages.last() );
-//         text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-//     }
+    else
+    {
+        pg = document->page( selpages.first() );
+        ret.append ( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        int end = selpages.count() - 1;
+        for( int i = 1; i < end; ++i )
+        {
+            pg = document->page( selpages.at( i ) );
+            ret.append( pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        }
+        pg = document->page( selpages.last() );
+        ret.append( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+    }
     return ret;
 }
 
@@ -3089,6 +3086,9 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                     if (item && (page = item->page())->textSelection())
                     {
                         QMenu menu( this );
+
+                        menu.addSection( i18np( "Text (1 character)", "Text (%1 characters)", d->selectedText().length() ) );
+
                         QAction *textToClipboard = menu.addAction( QIcon::fromTheme( QStringLiteral("edit-copy") ), i18n( "Copy Text" ) );
                         QAction *httpLink = 0;
 #ifdef HAVE_SPEECH
@@ -3164,13 +3164,11 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
 
                                 if (node)
                                 {
-                                    //  JS: This code adapted from PageViewPrivate::selectedText()
-                                    QList< int > selpages = d->pagesWithTextSelection.toList();
-                                    qSort( selpages );
-                                    int end = selpages.count();
-                                    for (int i = 0; i < end; i++ )
+                                    Okular::TextReference::List refs = d->selectedTextReferences();
+                                    for (int i = 0; i < refs.count(); i++ )
                                     {
-                                        const Okular::Page * pg = d->document->page( selpages.at( i ) );
+                                        const Okular::TextReference * ref = refs.at( i );
+                                        Okular::Page * pg = ref->page();
                                         Okular::Tagging* tag = new Okular::TextTagging( pg->textSelection() );
                                         tag->setNode (node);
                                         d->document->addPageTagging( pg->number(), tag );

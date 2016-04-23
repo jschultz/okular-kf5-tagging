@@ -15,6 +15,7 @@
 #include "document_p.h"
 #include "page.h"
 #include "page_p.h"
+#include "textpage.h"
 
 using namespace Okular;
 
@@ -400,7 +401,7 @@ class Okular::TextTaggingPrivate : public Okular::TaggingPrivate
         void resetTransformation();
         void transform( const QTransform &matrix );
 
-
+        const TextReference   * m_ref;
         RegularAreaRect * m_textArea;
         RegularAreaRect * m_transformedTextArea;
 };
@@ -443,6 +444,25 @@ TextTagging::TextTagging( const QDomNode & node )
             d->m_textArea->append( rect );
         }
     }
+}
+
+TextTagging::TextTagging( const TextReference * ref )
+    : Tagging( *new TextTaggingPrivate() )
+{
+    Q_D( TextTagging );
+
+    d->m_ref = ref;
+
+    RegularAreaRect *textArea = d->m_page->m_text->TextReferenceArea( ref );
+    d->setTextArea( textArea );
+
+    NormalizedRect rect = textArea->first();
+    int end = textArea->count();
+    for (int i = 1; i < end; i++ )
+    {
+        rect |= textArea->at( i );
+    }
+    d->m_boundary = rect;
 }
 
 TextTagging::TextTagging( const RegularAreaRect * textArea )
