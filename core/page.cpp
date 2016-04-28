@@ -342,11 +342,33 @@ Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::
         rotatedArea.transform( d->rotationMatrix().inverted() );
 
         ret = d->m_text->reference( &rotatedArea, b );
+
+	//  JS test text reference area functions
+        RegularAreaRect *textarea = d->m_text->TextReferenceArea( ret );
+        bool equal = ( textarea->count() == rotatedArea.count() );
+        if ( equal )
+        {
+            for (int i = 0; i < rotatedArea.count(); i++)
+            {
+                if (! (textarea->at(i) == rotatedArea.at(i)))
+                {
+                    equal = 0;
+                    break;
+                }
+            }
+        }
+        if ( ! equal )
+            qCWarning(OkularCoreDebug) << "XXXXXX Text reference error";
     }
     else
         ret = d->m_text->reference( 0, b );
 
     return ret;
+}
+
+RegularAreaRect* Page::TextReferenceArea( const Okular::TextReference* ref ) const
+{
+    return d->m_text->TextReferenceArea( ref );
 }
 
 TextEntity::List Page::words( const RegularAreaRect * area, TextPage::TextAreaInclusionBehaviour b ) const
@@ -932,7 +954,7 @@ void PagePrivate::restoreLocalContents( const QDomNode & pageNode )
                 taggingNode = taggingNode.nextSibling();
 
                 // get tagging from the dom element
-                Tagging * tag = TaggingUtils::createTagging( tagElement );
+                Tagging * tag = TaggingUtils::createTagging( this->m_page->d, tagElement );
 
                 // append tagging to the list or show warning
                 if ( tag )

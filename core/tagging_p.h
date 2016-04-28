@@ -44,8 +44,8 @@ class TaggingPrivate
          * @since 0.17
          */
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
-	
-        PagePrivate * m_page;
+
+        const PagePrivate * m_page;
         Node * m_node;
 
         QString m_author;

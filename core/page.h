@@ -207,6 +207,12 @@ class OKULARCORE_EXPORT Page
         Okular::TextReference* reference( const RegularAreaRect * rect = 0 ) const;
 
         /**
+         * Returns the area taken by a text reference.
+         * @see TextPage::TextReferenceArea()
+         */
+        RegularAreaRect* TextReferenceArea( const Okular::TextReference* ref ) const;
+
+        /**
          * Returns the page reference (or part of it).
          * @see TextPage::reference()
          */

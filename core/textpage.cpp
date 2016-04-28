@@ -737,53 +737,38 @@ RegularAreaRect * TextPage::textArea ( TextSelection * sel) const
 
 RegularAreaRect *TextPage::TextReferenceArea ( const TextReference *ref ) const
 {
+    RegularAreaRect * ret= new RegularAreaRect;
+
     uint ref_offset = ref->offset();
     uint ref_length = ref->length();
 
     TextList::ConstIterator it = d->m_words.constBegin(), end = d->m_words.constEnd();
     int entity_offset = 0;
     QString str = (*it)->text();
-    uint len = str.length();
-    while ( it != end && entity_offset + len <= ref_offset )
+    uint entity_len = str.length();
+    while ( it != end && entity_offset + entity_len <= ref_offset )
     {
-        entity_offset += len;
+        entity_offset += entity_len;
         it++;
         str = (*it)->text();
-        len = str.length();
+        entity_len = str.length();
     }
-    if ( entity_offset + len > ref_offset )
+    if ( entity_offset + entity_len > ref_offset )
     {
-        SearchPoint sp;
-        sp.it_begin = it;
-        sp.offset_begin = ref_offset - entity_offset;
-
-        while ( it != end && entity_offset + len <= ref_offset + ref_length )
+        while ( it != end && entity_offset + entity_len < ref_offset + ref_length )
         {
-            entity_offset += len;
+            ret->appendShape( (*it)->area, MergeRight );
+            entity_offset += entity_len;
             it++;
             str = (*it)->text();
-            len = str.length();
+            entity_len = str.length();
         }
-
-        sp.it_end = it;
-        sp.offset_end = ref_offset + ref_length - entity_offset;
-        return d->TextPagePrivate::searchPointToArea(&sp);
+        ret->appendShape( (*it)->area, MergeRight );
+        return ret;
     }
     else
         return 0;
 }
-
-// RegularAreaRect *TextPage::TextReferenceArea ( QList<TextReference *> textReferences ) const
-// {
-//     RegularAreaRect * ret= new RegularAreaRect;
-//
-//     QList<TextReference *>::Iterator it = textReferences.begin(), textReferences = words.end();
-//     for( ; it != itEnd ; it++)
-//     {
-// //        ret->appendShape( it->
-//     }
-// }
-
 
 RegularAreaRect* TextPage::findText( int searchID, const QString &query, SearchDirection direct,
                                      Qt::CaseSensitivity caseSensitivity, const RegularAreaRect *area )
@@ -899,6 +884,7 @@ RegularAreaRect* TextPagePrivate::searchPointToArea(const SearchPoint* sp)
     for (TextList::ConstIterator it = sp->it_begin; ; it++)
     {
         const TinyTextEntity* curEntity = *it;
+        qCWarning(OkularCoreDebug) << "entity text:" << (*it)->text();
         ret->append( curEntity->transformedArea( matrix ) );
 
         if (it == sp->it_end) {
@@ -1197,7 +1183,7 @@ Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextArea
             {
                 if ( area->intersects( (*it)->area ) )
                 {
-                    if ( ref_offset == 0 )
+                    if ( ref_length == 0 )
                         ref_offset = entity_offset;
 
                     ref_length += len;
@@ -1208,7 +1194,7 @@ Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextArea
                 NormalizedPoint center = (*it)->area.center();
                 if ( area->contains( center.x, center.y ) )
                 {
-                    if ( ref_offset == 0 )
+                    if ( ref_length == 0 )
                         ref_offset = entity_offset;
 
                     ref_length += len;

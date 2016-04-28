@@ -3169,7 +3169,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                     {
                                         const Okular::TextReference * ref = refs.at( i );
                                         Okular::Page * pg = ref->page();
-                                        Okular::Tagging* tag = new Okular::TextTagging( pg->textSelection() );
+                                        Okular::Tagging* tag = new Okular::TextTagging( ref );
                                         tag->setNode (node);
                                         d->document->addPageTagging( pg->number(), tag );
                                     }

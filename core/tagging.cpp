@@ -20,7 +20,7 @@
 using namespace Okular;
 
 //BEGIN TaggingUtils implementation
-Tagging * TaggingUtils::createTagging( const QDomElement & tagElement )
+Tagging * TaggingUtils::createTagging( const PagePrivate * page_p, const QDomElement & tagElement )
 {
     // safety check on tagging element
     if ( !tagElement.hasAttribute( "type" ) )
@@ -32,7 +32,7 @@ Tagging * TaggingUtils::createTagging( const QDomElement & tagElement )
     switch ( typeNumber )
     {
         case Tagging::TText:
-            tagging = new TextTagging( tagElement );
+            tagging = new TextTagging( page_p, tagElement );
             break;
         case Tagging::TBox:
             tagging = new BoxTagging( tagElement );
@@ -273,7 +273,7 @@ QDomNode Tagging::getTaggingPropertiesDomNode() const
 void Tagging::setTaggingProperties( const QDomNode& node )
 {
     // Save off internal properties that aren't contained in node
-    Okular::PagePrivate *p = d_ptr->m_page;
+    const Okular::PagePrivate *p = d_ptr->m_page;
     QVariant nativeID = d_ptr->m_nativeId;
     int internalFlags = d_ptr->m_flags;
     Tagging::DisposeDataFunction disposeFunc = d_ptr->m_disposeFunc;
@@ -401,13 +401,16 @@ class Okular::TextTaggingPrivate : public Okular::TaggingPrivate
         void resetTransformation();
         void transform( const QTransform &matrix );
 
-        const TextReference   * m_ref;
+        const TextReference * m_ref;
         RegularAreaRect * m_textArea;
         RegularAreaRect * m_transformedTextArea;
 };
 
 TextTaggingPrivate::~TextTaggingPrivate()
 {
+    if (m_ref)
+        delete m_ref;
+
     if (m_textArea)
         delete m_textArea;
 
@@ -421,11 +424,12 @@ void TextTaggingPrivate::setTextArea( const RegularAreaRect * textArea )
     *m_textArea = *textArea;
 }
 
-TextTagging::TextTagging( const QDomNode & node )
+TextTagging::TextTagging( const PagePrivate * page_p, const QDomNode & node )
     : Tagging( *new TextTaggingPrivate(), node )
 {
     Q_D( TextTagging );
 
+    d->m_page = page_p;
     d->m_textArea = new Okular::RegularAreaRect();
     QDomNode taggingNode = node.firstChild();
     while( taggingNode.isElement() )
@@ -434,14 +438,10 @@ TextTagging::TextTagging( const QDomNode & node )
         QDomElement tagElement = taggingNode.toElement();
         taggingNode = taggingNode.nextSibling();
 
-        if ( tagElement.tagName() == "rect" )
+        if ( tagElement.tagName() == "text" )
         {
-            NormalizedRect rect = NormalizedRect (tagElement.attribute( "l" ).toDouble(),
-                tagElement.attribute( "t" ).toDouble(),
-                tagElement.attribute( "r" ).toDouble(),
-                tagElement.attribute( "b" ).toDouble());
-
-            d->m_textArea->append( rect );
+            d->m_ref = new TextReference ( d->m_page->m_page, tagElement.attribute( "o" ).toInt(),
+                tagElement.attribute( "l" ).toInt() );
         }
     }
 }
@@ -453,23 +453,7 @@ TextTagging::TextTagging( const TextReference * ref )
 
     d->m_ref = ref;
 
-    RegularAreaRect *textArea = d->m_page->m_text->TextReferenceArea( ref );
-    d->setTextArea( textArea );
-
-    NormalizedRect rect = textArea->first();
-    int end = textArea->count();
-    for (int i = 1; i < end; i++ )
-    {
-        rect |= textArea->at( i );
-    }
-    d->m_boundary = rect;
-}
-
-TextTagging::TextTagging( const RegularAreaRect * textArea )
-    : Tagging( *new TextTaggingPrivate() )
-{
-    Q_D( TextTagging );
-
+    const RegularAreaRect *textArea = ref->page()->TextReferenceArea( ref );
     d->setTextArea( textArea );
 
     NormalizedRect rect = textArea->first();
@@ -496,19 +480,13 @@ void TextTagging::store( QDomNode & node, QDomDocument & document ) const
     // recurse to parent objects storing properties
     Tagging::store( node, document );
 
-    NormalizedRect rect;
-    int end = d->m_textArea->count();
-    for (int i = 0; i < end; i++ )
+    if ( d->m_ref )   //  Shouldn't happen unless file record is corrupt
     {
-        rect = d->m_textArea->at( i );
-
-        QDomElement e = document.createElement( "rect" );
+        QDomElement e = document.createElement( "text" );
         node.appendChild( e );
 
-        e.setAttribute( "l", QString::number( rect.left ) );
-        e.setAttribute( "t", QString::number( rect.top ) );
-        e.setAttribute( "r", QString::number( rect.right ) );
-        e.setAttribute( "b", QString::number( rect.bottom ) );
+        e.setAttribute( "o", QString::number( d->m_ref->offset() ) );
+        e.setAttribute( "l", QString::number( d->m_ref->length() ) );
     }
 }
 
