@@ -97,17 +97,12 @@ class OKULARCORE_EXPORT TextReference
          * Creates a new text entity with the given @p offset and the
          * given @p length.
          */
-        TextReference( Page *page, uint offset, uint length );
+        TextReference( uint offset, uint length );
 
         /**
          * Destroys the text entity.
          */
         ~TextReference();
-
-        /**
-         * Returns the page containing the reference.
-         */
-        Page *page() const;
 
         /**
          * Returns the offset of the first character.
@@ -120,7 +115,6 @@ class OKULARCORE_EXPORT TextReference
         uint length() const;
 
     private:
-        Page *m_page;
         uint m_offset;
         uint m_length;
 

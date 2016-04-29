@@ -43,7 +43,7 @@ class OKULARCORE_EXPORT TaggingUtils
          *
          * Returns a pointer to the complete tagging or 0 if element is invalid.
          */
-        static Tagging * createTagging( const PagePrivate * page_p, const QDomElement & tagElement );
+        static Tagging * createTagging( const QDomElement & tagElement );
 
         /**
          */
@@ -267,12 +267,12 @@ class OKULARCORE_EXPORT TextTagging : public Tagging
          */
         TextTagging();
 
-        TextTagging( const TextReference * ref );
+        TextTagging( const Page * page, const TextReference * ref );
 
         /**
          * Creates a new text tagging from the xml @p description
          */
-        TextTagging( const PagePrivate * page_p, const QDomNode &description );
+        TextTagging( const QDomNode &description );
 
         /**
          * Destroys the text tagging.
@@ -284,7 +284,7 @@ class OKULARCORE_EXPORT TextTagging : public Tagging
          */
         SubType subType() const;
 
-	const RegularAreaRect * transformedTextArea () const;
+        const RegularAreaRect * transformedTextArea () const;
         const TextReference * reference() const;
 
         /**

@@ -129,7 +129,7 @@ public:
     OkularTTS* tts();
 #endif
     QString selectedText() const;
-    Okular::TextReference::List selectedTextReferences() const;
+    void createTextTaggingsfromSelection(Okular::Node *node) const;
 
     // the document, pageviewItems and the 'visible cache'
     PageView *q;
@@ -890,16 +890,10 @@ QString PageViewPrivate::selectedText() const
     QString text;
     QList< int > selpages = pagesWithTextSelection.toList();
     qSort( selpages );
-    const Okular::Page * pg = 0;
-    if ( selpages.count() == 1 )
+    const Okular::Page * pg = document->page( selpages.first() );
+    text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+    if ( selpages.count() > 1 )
     {
-        pg = document->page( selpages.first() );
-        text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-    }
-    else
-    {
-        pg = document->page( selpages.first() );
-        text.append( pg->text( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
         int end = selpages.count() - 1;
         for( int i = 1; i < end; ++i )
         {
@@ -912,32 +906,35 @@ QString PageViewPrivate::selectedText() const
     return text;
 }
 
-Okular::TextReference::List PageViewPrivate::selectedTextReferences() const
+void PageViewPrivate::createTextTaggingsfromSelection(Okular::Node *node) const
 {
-    Okular::TextReference::List ret;
-
     QList< int > selpages = pagesWithTextSelection.toList();
     qSort( selpages );
-    const Okular::Page * pg = 0;
-    if ( selpages.count() == 1 )
+    const Okular::Page * pg = document->page( selpages.first() );
+    Okular::Tagging* tag = new Okular::TextTagging( pg, pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+    tag->setCreationDate( QDateTime::currentDateTime() );
+    tag->setAuthor( Okular::Settings::identityAuthor() );
+    tag->setNode (node);
+    document->addPageTagging( pg->number(), tag );
+    if ( selpages.count() > 1 )
     {
-        pg = document->page( selpages.first() );
-        ret.append ( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-    }
-    else
-    {
-        pg = document->page( selpages.first() );
-        ret.append ( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
         int end = selpages.count() - 1;
         for( int i = 1; i < end; ++i )
         {
             pg = document->page( selpages.at( i ) );
-            ret.append( pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+            Okular::Tagging* tag = new Okular::TextTagging( pg, pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+            tag->setCreationDate( QDateTime::currentDateTime() );
+            tag->setAuthor( Okular::Settings::identityAuthor() );
+            tag->setNode (node);
+            document->addPageTagging( pg->number(), tag );
         }
         pg = document->page( selpages.last() );
-        ret.append( pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        Okular::Tagging* tag = new Okular::TextTagging( pg, pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        tag->setCreationDate( QDateTime::currentDateTime() );
+        tag->setAuthor( Okular::Settings::identityAuthor() );
+        tag->setNode (node);
+        document->addPageTagging( pg->number(), tag );
     }
-    return ret;
 }
 
 
@@ -2899,8 +2896,6 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 Okular::Tagging* tag = new Okular::BoxTagging( tagRect );
                                 tag->setCreationDate( QDateTime::currentDateTime() );
                                 tag->setAuthor( Okular::Settings::identityAuthor() );
-
-                                //  TODO: Create date, user, etc.
                                 tag->setNode (node);
                                 d->document->addPageTagging( okularPage->number(), tag );
                             }
@@ -3163,18 +3158,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 }
 
                                 if (node)
-                                {
-                                    Okular::TextReference::List refs = d->selectedTextReferences();
-                                    for (int i = 0; i < refs.count(); i++ )
-                                    {
-                                        const Okular::TextReference * ref = refs.at( i );
-                                        Okular::Page * pg = ref->page();
-                                        Okular::Tagging* tag = new Okular::TextTagging( ref );
-                                        tag->setNode (node);
-                                        d->document->addPageTagging( pg->number(), tag );
-                                    }
-                                }
-
+                                    d->createTextTaggingsfromSelection(node);
                             }
                         }
                     }

@@ -954,7 +954,7 @@ void PagePrivate::restoreLocalContents( const QDomNode & pageNode )
                 taggingNode = taggingNode.nextSibling();
 
                 // get tagging from the dom element
-                Tagging * tag = TaggingUtils::createTagging( this->m_page->d, tagElement );
+                Tagging * tag = TaggingUtils::createTagging( tagElement );
 
                 // append tagging to the list or show warning
                 if ( tag )

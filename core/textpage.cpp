@@ -212,18 +212,13 @@ NormalizedRect TextEntity::transformedArea(const QTransform &matrix) const
     return transformed_area;
 }
 
-TextReference::TextReference( Page *page, uint offset, uint length )
-    : m_page ( page ), m_offset( offset ), m_length( length )
+TextReference::TextReference( uint offset, uint length )
+    : m_offset( offset ), m_length( length )
 {
 }
 
 TextReference::~TextReference()
 {
-}
-
-Page* TextReference::page() const
-{
-    return m_page;
 }
 
 uint TextReference::offset() const
@@ -1212,7 +1207,7 @@ Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextArea
             ref_length += len;
         }
     }
-    return new Okular::TextReference ( d->m_page->m_page, ref_offset, ref_length );
+    return new Okular::TextReference ( ref_offset, ref_length );
 }
 
 static bool compareTinyTextEntityX(const WordWithCharacters &first, const WordWithCharacters &second)

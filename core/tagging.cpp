@@ -20,7 +20,7 @@
 using namespace Okular;
 
 //BEGIN TaggingUtils implementation
-Tagging * TaggingUtils::createTagging( const PagePrivate * page_p, const QDomElement & tagElement )
+Tagging * TaggingUtils::createTagging( const QDomElement & tagElement )
 {
     // safety check on tagging element
     if ( !tagElement.hasAttribute( "type" ) )
@@ -32,7 +32,7 @@ Tagging * TaggingUtils::createTagging( const PagePrivate * page_p, const QDomEle
     switch ( typeNumber )
     {
         case Tagging::TText:
-            tagging = new TextTagging( page_p, tagElement );
+            tagging = new TextTagging( tagElement );
             break;
         case Tagging::TBox:
             tagging = new BoxTagging( tagElement );
@@ -396,8 +396,6 @@ class Okular::TextTaggingPrivate : public Okular::TaggingPrivate
 
         ~TextTaggingPrivate();
 
-        void setTextArea( const RegularAreaRect * textArea );
-
         void resetTransformation();
         void transform( const QTransform &matrix );
 
@@ -418,19 +416,11 @@ TextTaggingPrivate::~TextTaggingPrivate()
         delete m_transformedTextArea;
 }
 
-void TextTaggingPrivate::setTextArea( const RegularAreaRect * textArea )
-{
-    m_textArea = new RegularAreaRect;
-    *m_textArea = *textArea;
-}
-
-TextTagging::TextTagging( const PagePrivate * page_p, const QDomNode & node )
+TextTagging::TextTagging( const QDomNode & node )
     : Tagging( *new TextTaggingPrivate(), node )
 {
     Q_D( TextTagging );
 
-    d->m_page = page_p;
-    d->m_textArea = new Okular::RegularAreaRect();
     QDomNode taggingNode = node.firstChild();
     while( taggingNode.isElement() )
     {
@@ -440,27 +430,26 @@ TextTagging::TextTagging( const PagePrivate * page_p, const QDomNode & node )
 
         if ( tagElement.tagName() == "text" )
         {
-            d->m_ref = new TextReference ( d->m_page->m_page, tagElement.attribute( "o" ).toInt(),
+            d->m_ref = new TextReference ( tagElement.attribute( "o" ).toInt(),
                 tagElement.attribute( "l" ).toInt() );
         }
     }
 }
 
-TextTagging::TextTagging( const TextReference * ref )
+TextTagging::TextTagging( const Page * page, const TextReference * ref )
     : Tagging( *new TextTaggingPrivate() )
 {
     Q_D( TextTagging );
 
     d->m_ref = ref;
 
-    const RegularAreaRect *textArea = ref->page()->TextReferenceArea( ref );
-    d->setTextArea( textArea );
+    d->m_textArea = page->TextReferenceArea( ref );
 
-    NormalizedRect rect = textArea->first();
-    int end = textArea->count();
+    NormalizedRect rect = d->m_textArea->first();
+    int end = d->m_textArea->count();
     for (int i = 1; i < end; i++ )
     {
-        rect |= textArea->at( i );
+        rect |= d->m_textArea->at( i );
     }
     d->m_boundary = rect;
 }
@@ -501,6 +490,14 @@ const RegularAreaRect * TextTagging::transformedTextArea () const
 void TextTaggingPrivate::resetTransformation()
 {
     TaggingPrivate::resetTransformation();
+
+    if (! m_page->m_page->hasTextPage() )
+        m_page->m_doc->m_parent->requestTextPage( m_page->m_page->number() );
+
+    if ( m_textArea )
+        delete m_textArea;
+
+    m_textArea = m_page->m_page->TextReferenceArea( m_ref );
 
     delete m_transformedTextArea;
     m_transformedTextArea = new RegularAreaRect;
