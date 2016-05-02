@@ -17,15 +17,13 @@
 #include <QIcon>
 
 #include "annotationpropertiesdialog.h"
-#include "taggingpropertiesdialog.h"
 
 #include "core/annotations.h"
 #include "core/document.h"
 #include "core/page.h"
-#include "core/tagging.h"
 #include "guiutils.h"
 
-Q_DECLARE_METATYPE( AnnotationPopup::AnnotOrTagPagePair )
+Q_DECLARE_METATYPE( AnnotationPopup::AnnotPagePair )
 
 namespace {
 
@@ -62,16 +60,9 @@ AnnotationPopup::AnnotationPopup( Okular::Document *document, MenuMode mode,
 
 void AnnotationPopup::addAnnotation( Okular::Annotation* annotation, int pageNumber )
 {
-    AnnotOrTagPagePair pair( annotation, pageNumber );
-    if ( !mAnnotsAndTags.contains( pair ) )
-      mAnnotsAndTags.append( pair );
-}
-
-void AnnotationPopup::addTagging( Okular::Tagging* tagging, int pageNumber )
-{
-    AnnotOrTagPagePair pair( tagging, pageNumber );
-    if ( !mAnnotsAndTags.contains( pair ) )
-      mAnnotsAndTags.append( pair );
+    AnnotPagePair pair( annotation, pageNumber );
+    if ( !mAnnots.contains( pair ) )
+        mAnnots.append( pair );
 }
 
 void AnnotationPopup::exec( const QPoint &point )
@@ -81,7 +72,7 @@ void AnnotationPopup::exec( const QPoint &point )
 
 void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
 {
-    if ( mAnnotsAndTags.isEmpty() && mAnnotsAndTags.isEmpty() )
+    if ( mAnnots.isEmpty() && mAnnots.isEmpty() )
         return;
 
     QMenu menu( mParent );
@@ -99,11 +90,11 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
 
     if ( mMenuMode == SingleAnnotationMode )
     {
-        const bool onlyOne = (mAnnotsAndTags.count() == 1);
+        const bool onlyOne = (mAnnots.count() == 1);
 
-        const AnnotOrTagPagePair &pair = mAnnotsAndTags.at(0);
+        const AnnotPagePair &pair = mAnnots.at(0);
 
-        menu.addSection( i18np( "Annotation", "%1 Annotations", mAnnotsAndTags.count() ) );
+        menu.addSection( i18np( "Annotation", "%1 Annotations", mAnnots.count() ) );
 
         action = menu.addAction( QIcon::fromTheme( QStringLiteral("comment") ), i18n( "&Open Pop-up Note" ) );
         action->setData( QVariant::fromValue( pair ) );
@@ -114,7 +105,7 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
         action->setEnabled( mDocument->isAllowed( Okular::AllowNotes ) );
         action->setProperty( actionTypeId, deleteAllId );
 
-        foreach ( const AnnotOrTagPagePair& pair, mAnnotsAndTags ) if ( pair.annotation )
+        foreach ( const AnnotPagePair& pair, mAnnots ) if ( pair.annotation )
         {
             if ( !mDocument->canRemovePageAnnotation( pair.annotation ) )
                 action->setEnabled( false );
@@ -141,7 +132,7 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
     }
     else
     {
-        foreach ( const AnnotOrTagPagePair& pair, mAnnotsAndTags ) if ( pair.annotation )
+        foreach ( const AnnotPagePair& pair, mAnnots ) if ( pair.annotation )
         {
             menu.addSection( GuiUtils::captionForAnnotation( pair.annotation ) );
 
@@ -175,130 +166,34 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
         }
     }
 
-    foreach ( const AnnotOrTagPagePair& pair, mAnnotsAndTags ) if ( pair.tagging )
-    {
-        // menu.addSection( GuiUtils::captionForTagging( pair.tagging ) );
-        menu.addSection( "Tagging" );
-
-        action = menu.addAction( QIcon::fromTheme( QStringLiteral("edit-copy") ), i18n( "&Copy" ) );
-        action->setData( QVariant::fromValue( pair ) );
-        action->setProperty( actionTypeId, copyId );
-
-        action = menu.addAction( QIcon::fromTheme( QStringLiteral("comment") ), i18n( "&Comment" ) );
-        action->setData( QVariant::fromValue( pair ) );
-        action->setProperty( actionTypeId, openId );
-
-        action = menu.addAction( QIcon::fromTheme( QStringLiteral("list-remove") ), i18n( "&Delete" ) );
-        action->setData( QVariant::fromValue( pair ) );
-        action->setProperty( actionTypeId, deleteId );
-
-        action = menu.addAction( QIcon::fromTheme( QStringLiteral("configure") ), i18n( "&Properties" ) );
-        action->setData( QVariant::fromValue( pair ) );
-        action->setProperty( actionTypeId, propertiesId );
-    }
-
     QAction *choice = menu.exec( point.isNull() ? QCursor::pos() : point );
 
     // check if the user really selected an action
     if ( choice ) {
-        const AnnotOrTagPagePair pair = choice->data().value<AnnotOrTagPagePair>();
+        const AnnotPagePair pair = choice->data().value<AnnotPagePair>();
 
         const QString actionType = choice->property( actionTypeId ).toString();
         if ( actionType == openId ) {
-            if ( pair.annotation )
-                emit openAnnotationWindow( pair.annotation, pair.pageNumber );
-            else
-                emit openTaggingWindow( pair.tagging, pair.pageNumber );
+            emit openAnnotationWindow( pair.annotation, pair.pageNumber );
         } else if( actionType == deleteId ) {
             if ( pair.pageNumber != -1 ) {
-                if ( pair.annotation )
-                    mDocument->removePageAnnotation( pair.pageNumber, pair.annotation );
-                else
-                    mDocument->removePageTagging( pair.pageNumber, pair.tagging );
+                mDocument->removePageAnnotation( pair.pageNumber, pair.annotation );
             }
         } else if( actionType == deleteAllId ) {
-            Q_FOREACH ( const AnnotOrTagPagePair& pair, mAnnotsAndTags )
+            Q_FOREACH ( const AnnotPagePair& pair, mAnnots )
             {
                 if ( pair.pageNumber != -1 ) {
-                    if ( pair.annotation )
-                        mDocument->removePageAnnotation( pair.pageNumber, pair.annotation );
+                    mDocument->removePageAnnotation( pair.pageNumber, pair.annotation );
                 }
             }
         } else if( actionType == propertiesId ) {
             if ( pair.pageNumber != -1 ) {
-                if ( pair.annotation ) {
-                    AnnotsPropertiesDialog propdialog( mParent, mDocument, pair.pageNumber, pair.annotation );
-                    propdialog.exec();
-                } else {
-                    TaggingsPropertiesDialog propdialog( mParent, mDocument, pair.pageNumber, pair.tagging );
-                    propdialog.exec();
-                }
+                AnnotsPropertiesDialog propdialog( mParent, mDocument, pair.pageNumber, pair.annotation );
+                propdialog.exec();
             }
         } else if( actionType == saveId ) {
             Okular::EmbeddedFile *embeddedFile = embeddedFileFromAnnotation( pair.annotation );
             GuiUtils::saveEmbeddedFile( embeddedFile, mParent );
-        } else if( actionType == copyId ) {
-            switch ( pair.tagging->subType() )
-            {
-                case Okular::Tagging::TBox:
-                {
-                    const QVector< PageViewItem * > items = pageView->items();
-
-                    QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
-                    for ( ; iIt != iEnd; ++iIt )
-                    {
-                        PageViewItem * item = *iIt;
-                        const Okular::Page *okularPage = item->page();
-                        if ( okularPage != pair.tagging->page()
-                        ||  !item->isVisible() )
-                            continue;
-
-                        QRect tagRect   = pair.tagging->transformedBoundingRectangle().geometry( item->uncroppedWidth(), item->uncroppedHeight() ).translated( item->uncroppedGeometry().topLeft() );
-                        QRect itemRect  = item->croppedGeometry();
-                        QRect intersect = tagRect.intersect (itemRect);
-                        if ( !intersect.isNull() )
-                        {
-//  This is code to select text in a rectangle
-//                             intersect.translate( -item->uncroppedGeometry().topLeft() );
-//                             Okular::RegularAreaRect rects;
-//                             rects.append( Okular::NormalizedRect( intersect, item->uncroppedWidth(), item->uncroppedHeight() ) );
-//                             QString tagText = okularPage->text( &rects, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
-//                             QClipboard *cb = QApplication::clipboard();
-//                             cb->setText( tagText, QClipboard::Clipboard );
-//                             if ( cb->supportsSelection() )
-//                                 cb->setText( tagText, QClipboard::Selection );
-//                             d->messageWindow->display( i18n( "Text (%1 characters) copied to clipboard.", tagText.length() ) );
-
-                            // renders page into a pixmap
-                            QPixmap copyPix( tagRect.width(), tagRect.height() );
-                            QPainter copyPainter( &copyPix );
-                            copyPainter.translate( -tagRect.left(), -tagRect.top() );
-                            pageView->drawDocumentOnPainter( tagRect, &copyPainter );
-                            copyPainter.end();
-                            QClipboard *cb = QApplication::clipboard();
-                            cb->setPixmap( copyPix, QClipboard::Clipboard );
-                            if ( cb->supportsSelection() )
-                                cb->setPixmap( copyPix, QClipboard::Selection );
-//                             d->messageWindow->display( i18n( "Image [%1x%2] copied to clipboard.", copyPix.width(), copyPix.height() ) );
-                        }
-                    }
-                    break;
-                }
-                case Okular::Tagging::TText:
-                {
-                    Okular::TextTagging * textTagging = static_cast< Okular::TextTagging * >(pair.tagging);
-                    const Okular::Page * okularPage = textTagging->page();
-                    if ( !okularPage->hasTextPage() )
-                        mDocument->requestTextPage( okularPage->number() );
-
-                    QString tagText = textTagging->page()->text( textTagging->transformedTextArea(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
-                    QClipboard *cb = QApplication::clipboard();
-                    cb->setText( tagText, QClipboard::Clipboard );
-                    if ( cb->supportsSelection() )
-                        cb->setText( tagText, QClipboard::Selection );
-                    break;
-                }
-            }
         }
     }
 }

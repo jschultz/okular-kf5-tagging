@@ -136,10 +136,6 @@ class DocumentPrivate
         bool canAddAnnotationsNatively() const;
         bool canModifyExternalAnnotations() const;
         bool canRemoveExternalAnnotations() const;
-        void notifyTaggingChanges( int page );
-        bool canAddTaggingsNatively() const;
-        bool canModifyExternalTaggings() const;
-        bool canRemoveExternalTaggings() const;
         void warnLimitedAnnotSupport();
         OKULARCORE_EXPORT static QString docDataFileName(const QUrl &url, qint64 document_size);
 
@@ -148,9 +144,6 @@ class DocumentPrivate
         void performRemovePageAnnotation( int page, Annotation * annotation );
         void performModifyPageAnnotation( int page, Annotation * annotation, bool appearanceChanged );
         void performSetAnnotationContents( const QString & newContents, Annotation *annot, int pageNumber );
-        void performAddPageTagging( int page, Tagging *tagging );
-        void performRemovePageTagging( int page, Tagging * tagging );
-        void performModifyPageTagging( int page, Tagging * tagging, bool appearanceChanged );
 
         // private slots
         void saveDocumentInfo() const;

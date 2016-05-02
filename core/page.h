@@ -15,7 +15,6 @@
 #include "okularcore_export.h"
 #include "area.h"
 #include "global.h"
-#include "tagging.h"
 #include "textpage.h"
 
 class QPixmap;

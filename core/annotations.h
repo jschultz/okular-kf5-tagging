@@ -20,6 +20,7 @@
 
 #include "okularcore_export.h"
 #include "area.h"
+#include "textpage.h"
 
 namespace Okular {
 
@@ -46,6 +47,9 @@ class MovieAnnotationPrivate;
 class ScreenAnnotationPrivate;
 class WidgetAnnotationPrivate;
 class RichMediaAnnotationPrivate;
+class TextTagAnnotationPrivate;
+class BoxTagAnnotationPrivate;
+class QDANode;
 
 /**
  * @short Helper class for (recursive) annotation retrieval/storage.
@@ -118,6 +122,8 @@ class OKULARCORE_EXPORT Annotation
             AScreen = 12,   ///< A screen annotation
             AWidget = 13,   ///< A widget annotation
             ARichMedia = 14,///< A rich media annotation
+            ATTag = 15,     ///< A text tag annotation
+            ABTag = 16,     ///< A box tag annotation
             A_BASE = 0      ///< The annotation base class
         };
 
@@ -653,7 +659,7 @@ class OKULARCORE_EXPORT Annotation
 
         /**
          * Retrieve the QDomNode representing this annotation's properties
-         
+
          * @since 0.17 (KDE 4.11)
          */
         QDomNode getAnnotationPropertiesDomNode() const;
@@ -1709,6 +1715,132 @@ class OKULARCORE_EXPORT RichMediaAnnotation : public Annotation
     private:
         Q_DECLARE_PRIVATE( RichMediaAnnotation )
         Q_DISABLE_COPY( RichMediaAnnotation )
+};
+
+class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
+{
+    public:
+        /**
+         * Creates a new text tagging.
+         */
+        TextTagAnnotation();
+
+        TextTagAnnotation( const Page * page, const TextReference * ref );
+
+        /**
+         * Creates a new text tagging from the xml @p description
+         */
+        TextTagAnnotation( const QDomNode &description );
+
+        /**
+         * Destroys the text tagging.
+         */
+        ~TextTagAnnotation();
+
+        /**
+         * Returns the sub type of the text tagging.
+         */
+        SubType subType() const;
+
+        /**
+         * Assigns the node of the text tagging
+         */
+        void setNode ( const QDANode *node );
+
+        /**
+         * Returns the node of the tagging
+         */
+        const QDANode *node() const;
+
+        /**
+         * Returns the area occupied by the tagging
+         */
+        const RegularAreaRect * transformedTextArea () const;
+
+        /**
+         * Returns reference (offset, length) of the text tagging in the document
+         */
+        const TextReference * reference() const;
+
+        /**
+         * Stores the text tag annotation as xml in @p document under the given parent @p node.
+         */
+        void store( QDomNode &node, QDomDocument &document ) const;
+
+private:
+        Q_DECLARE_PRIVATE( TextTagAnnotation )
+        Q_DISABLE_COPY( TextTagAnnotation )
+};
+
+class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
+{
+    public:
+        /**
+         * Creates a new box tagging.
+         */
+        BoxTagAnnotation( );
+
+        BoxTagAnnotation( const NormalizedRect *rect );
+
+        /**
+         * Creates a new box tagging from the xml @p description
+         */
+        BoxTagAnnotation( const QDomNode &description );
+
+        /**
+         * Destroys the text tagging.
+         */
+        ~BoxTagAnnotation();
+
+        /**
+         * Returns the sub type of the box tagging.
+         */
+        SubType subType() const;
+
+        /**
+         * Assigns the node of the tagging
+         */
+        void setNode ( QDANode *node );
+
+        /**
+         * Returns the node of the tagging
+         */
+        const QDANode *node() const;
+
+        /**
+         * Stores the box tag annotation as xml in @p document under the given parent @p node.
+         */
+        void store( QDomNode &node, QDomDocument &document ) const;
+
+private:
+        Q_DECLARE_PRIVATE( BoxTagAnnotation )
+        Q_DISABLE_COPY( BoxTagAnnotation )
+};
+
+/**
+ * @short Helper class for node retrieval/storage.
+ */
+class OKULARCORE_EXPORT QDANodeUtils
+{
+    public:
+        static QList< QDANode * > * QDANodes ;
+
+        static QDANode * retrieveNode(int id);
+};
+
+class OKULARCORE_EXPORT QDANode
+{
+    friend class QDANodeUtils;
+
+    public:
+        QDANode();
+        ~QDANode();
+
+        unsigned int color() const;
+        int id()             const;
+
+    protected:
+        int m_id;
 };
 
 }
