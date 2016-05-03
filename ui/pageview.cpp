@@ -926,7 +926,7 @@ void PageViewPrivate::createTextTagAnnotationssfromSelection(Okular::QDANode *no
             document->addPageAnnotation( pg->number(), ann );
         }
         pg = document->page( selpages.last() );
-        Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( pg, pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( pg, pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
         ann->setCreationDate( QDateTime::currentDateTime() );
         ann->setAuthor( Okular::Settings::identityAuthor() );
         ann->setNode (node);
@@ -2773,7 +2773,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
             imageToClipboard = menu.addAction( QIcon::fromTheme(QStringLiteral("image-x-generic")), i18n( "Copy to Clipboard" ) );
             imageToFile = menu.addAction( QIcon::fromTheme(QStringLiteral("document-save")), i18n( "Save to File..." ) );
 
-            menu.addSection ( i18n( "Tag" ) );
+            menu.addSection ( i18n( "Box Tag" ) );
             QList< QAction * > * tagSelections = new QList< QAction * >();
             if (Okular::QDANodeUtils::QDANodes)
             {
@@ -3097,7 +3097,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                             httpLink = menu.addAction( i18n( "Go to '%1'", squeezedText ) );
                         }
 
-                        menu.addSection ( i18n( "Tag" ) );
+                        menu.addSection ( i18n( "Text Tag" ) );
                         QList< QAction * > * tagSelections = new QList< QAction * >();
                         if (Okular::QDANodeUtils::QDANodes)
                         {

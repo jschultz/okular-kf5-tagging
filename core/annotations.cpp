@@ -3075,6 +3075,7 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual void resetTransformation();
         virtual void setAnnotationProperties( const QDomNode& node );
         virtual AnnotationPrivate* getNewAnnotationPrivate();
+        virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
         const QDANode *m_node;
         const TextReference * m_ref;
@@ -3246,6 +3247,22 @@ AnnotationPrivate* TextTagAnnotationPrivate::getNewAnnotationPrivate()
 {
     return new TextTagAnnotationPrivate();
 }
+
+double TextTagAnnotationPrivate::distanceSqr( double x, double y, double xScale, double yScale )
+{
+
+    NormalizedRect rect = m_transformedTextArea->first();
+    double leastdistance = rect.distanceSqr( x, y, xScale, yScale );
+    int end = m_transformedTextArea->count();
+    for (int i = 1; leastdistance > 0 && i < end; i++ )
+    {
+        rect = m_transformedTextArea->at( i );
+        leastdistance = std::min( leastdistance, rect.distanceSqr( x, y, xScale, yScale ) );
+    }
+
+    return leastdistance;
+}
+
 
 /** BoxTagAnnotation [Annotation] */
 
