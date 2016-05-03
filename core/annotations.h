@@ -20,6 +20,7 @@
 
 #include "okularcore_export.h"
 #include "area.h"
+#include "ui/pageview.h"
 #include "textpage.h"
 
 namespace Okular {
@@ -1767,6 +1768,11 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          */
         void store( QDomNode &node, QDomDocument &document ) const;
 
+        /**
+         * Returns the text content of the text tag annotation.
+         */
+        QString text() const;
+
 private:
         Q_DECLARE_PRIVATE( TextTagAnnotation )
         Q_DISABLE_COPY( TextTagAnnotation )
@@ -1811,6 +1817,11 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          * Stores the box tag annotation as xml in @p document under the given parent @p node.
          */
         void store( QDomNode &node, QDomDocument &document ) const;
+
+        /**
+         * Returns the box tag annotation as a pixmap.
+         */
+        QPixmap pixmap() const;
 
 private:
         Q_DECLARE_PRIVATE( BoxTagAnnotation )

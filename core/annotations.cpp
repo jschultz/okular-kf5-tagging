@@ -24,6 +24,7 @@
 #include "movie.h"
 #include "page.h"
 #include "page_p.h"
+#include "ui/pageview.h"
 #include "sound.h"
 #include "textpage.h"
 
@@ -3140,6 +3141,12 @@ Annotation::SubType TextTagAnnotation::subType() const
     return ATTag;
 }
 
+QString TextTagAnnotation::text() const
+{
+    Q_D( const TextTagAnnotation );
+    return d->m_page->m_page->text( d->m_transformedTextArea, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+}
+
 void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 {
     Q_D( const TextTagAnnotation );
@@ -3311,6 +3318,42 @@ void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
     // store the optional attributes
     if ( d->m_node )
         TTagElement.setAttribute( QStringLiteral("node"), d->m_node->id() );
+}
+
+QPixmap BoxTagAnnotation::pixmap() const
+{
+//     Q_D( const BoxTagAnnotation );
+//
+//     const QVector< PageViewItem * > items = pageView->items();
+//     QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
+//     for ( ; iIt != iEnd; ++iIt )
+//     {
+//         PageViewItem * item = *iIt;
+//         const Okular::Page *okularPage = item->page();
+//         if ( okularPage->number() != pageItem->page()->number()
+//         ||  !item->isVisible() )
+//             continue;
+//
+//         QRect tagRect   = this->transformedBoundingRectangle().geometry( item->uncroppedWidth(), item->uncroppedHeight() ).translated( item->uncroppedGeometry().topLeft() );
+//         QRect itemRect  = item->croppedGeometry();
+//         QRect intersect = tagRect.intersect (itemRect);
+//         if ( !intersect.isNull() )
+//         {
+//             // renders page into a pixmap
+//             QPixmap copyPix( tagRect.width(), tagRect.height() );
+//             QPainter copyPainter( &copyPix );
+//             copyPainter.translate( -tagRect.left(), -tagRect.top() );
+//             pageView->drawDocumentOnPainter( tagRect, &copyPainter );
+//             copyPainter.end();
+//             QClipboard *cb = QApplication::clipboard();
+//             cb->setPixmap( copyPix, QClipboard::Clipboard );
+//             if ( cb->supportsSelection() )
+//                 cb->setPixmap( copyPix, QClipboard::Selection );
+//
+//             break;
+//         }
+//     }
+    return QPixmap();
 }
 
 void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )

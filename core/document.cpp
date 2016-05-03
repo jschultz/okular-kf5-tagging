@@ -3320,6 +3320,8 @@ bool Document::canRemovePageAnnotation( const Annotation * annotation ) const
         case Annotation::AStamp:
         case Annotation::AInk:
         case Annotation::ACaret:
+        case Annotation::ATTag:
+        case Annotation::ABTag:
             return true;
         default:
             return false;

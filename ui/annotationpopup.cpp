@@ -132,9 +132,17 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
     }
     else
     {
-        foreach ( const AnnotPagePair& pair, mAnnots ) if ( pair.annotation )
+        foreach ( const AnnotPagePair& pair, mAnnots )
         {
             menu.addSection( GuiUtils::captionForAnnotation( pair.annotation ) );
+
+            if ( pair.annotation->subType() == Okular::Annotation::ATTag
+              || pair.annotation->subType() == Okular::Annotation::ABTag )
+            {
+                action = menu.addAction( QIcon::fromTheme( QStringLiteral("edit-copy") ), i18n( "&Copy" ) );
+                action->setData( QVariant::fromValue( pair ) );
+                action->setProperty( actionTypeId, copyId );
+            }
 
             action = menu.addAction( QIcon::fromTheme( QStringLiteral("comment") ), i18n( "&Open Pop-up Note" ) );
             action->setData( QVariant::fromValue( pair ) );
@@ -194,6 +202,53 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
         } else if( actionType == saveId ) {
             Okular::EmbeddedFile *embeddedFile = embeddedFileFromAnnotation( pair.annotation );
             GuiUtils::saveEmbeddedFile( embeddedFile, mParent );
+        } else if( actionType == copyId ) {
+            if ( pair.annotation->subType() == Okular::Annotation::ATTag )
+            {
+                Okular::TextTagAnnotation * tTagAnn = static_cast< Okular::TextTagAnnotation * >( pair.annotation );
+                QString tagText = tTagAnn->text ();
+                QClipboard *cb = QApplication::clipboard();
+                cb->setText( tagText, QClipboard::Clipboard );
+                if ( cb->supportsSelection() )
+                    cb->setText( tagText, QClipboard::Selection );
+            }
+            if ( pair.annotation->subType() == Okular::Annotation::ABTag )
+            {
+                //  JS: To be implemented. Below is former working hacked code.
+//                     const QVector< PageViewItem * > items = pageView->items();
+//
+//                     QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd(
+// );
+//                     for ( ; iIt != iEnd; ++iIt )
+//                     {
+//                         PageViewItem * item = *iIt;
+//                         const Okular::Page *okularPage = item->page();
+//                         if ( okularPage != pair.tagging->page()
+//                         ||  !item->isVisible() )
+//                             continue;
+//
+//                         QRect tagRect   = pair.tagging->transformedBoundingRectangle().geometry( item->uncropp
+// edWidth(), item->uncroppedHeight() ).translated( item->uncroppedGeometry().topLeft() );
+//                         QRect itemRect  = item->croppedGeometry();
+//                         QRect intersect = tagRect.intersect (itemRect);
+//                         if ( !intersect.isNull() )
+//                         {
+//                             // renders page into a pixmap
+//                             QPixmap copyPix( tagRect.width(), tagRect.height() );
+//                             QPainter copyPainter( &copyPix );
+//                             copyPainter.translate( -tagRect.left(), -tagRect.top() );
+//                             pageView->drawDocumentOnPainter( tagRect, &copyPainter );
+//                             copyPainter.end();
+//                             QClipboard *cb = QApplication::clipboard();
+//                             cb->setPixmap( copyPix, QClipboard::Clipboard );
+//                             if ( cb->supportsSelection() )
+//                                 cb->setPixmap( copyPix, QClipboard::Selection );
+// //                             d->messageWindow->display( i18n( "Image [%1x%2] copied to clipboard.", copyPix.width(), copyPix.height() ) );
+//                         }
+//                     }
+//                     break;
+            }
+
         }
     }
 }

@@ -125,6 +125,12 @@ QString captionForAnnotation( const Okular::Annotation * ann )
         case Okular::Annotation::ARichMedia:
             ret = i18nc( "Caption for a rich media annotation", "Rich Media" );
             break;
+        case Okular::Annotation::ATTag:
+            ret = i18nc( "Caption for a text tag annotation", "Text Tag" );
+            break;
+        case Okular::Annotation::ABTag:
+            ret = i18nc( "Caption for a box tag annotation", "Box Tag" );
+            break;
         case Okular::Annotation::A_BASE:
             break;
     }
