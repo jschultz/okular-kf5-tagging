@@ -1071,7 +1071,10 @@ void DocumentPrivate::performAddPageAnnotation( int page, Annotation * annotatio
     kp->addAnnotation( annotation );
 
     // tell the annotation proxy
-    if ( proxy && proxy->supports(AnnotationProxy::Addition) )
+    if ( proxy && proxy->supports(AnnotationProxy::Addition)
+    //  But not if this is a tag annotation because proxies don't know about those
+    &&   annotation->subType() != Okular::Annotation::ATTag
+    &&   annotation->subType() != Okular::Annotation::ABTag )
         proxy->notifyAddition( annotation, page );
 
     // notify observers about the change
@@ -1106,7 +1109,10 @@ void DocumentPrivate::performRemovePageAnnotation( int page, Annotation * annota
     if ( m_parent->canRemovePageAnnotation( annotation ) )
     {
         // tell the annotation proxy
-        if ( proxy && proxy->supports(AnnotationProxy::Removal) )
+        if ( proxy && proxy->supports(AnnotationProxy::Removal)
+        //  But not if this is a tag annotation because proxies don't know about those
+        &&   annotation->subType() != Okular::Annotation::ATTag
+        &&   annotation->subType() != Okular::Annotation::ABTag )
             proxy->notifyRemoval( annotation, page );
 
         kp->removeAnnotation( annotation ); // Also destroys the object
@@ -1135,7 +1141,10 @@ void DocumentPrivate::performModifyPageAnnotation( int page, Annotation * annota
         return;
 
     // tell the annotation proxy
-    if ( proxy && proxy->supports(AnnotationProxy::Modification) )
+    if ( proxy && proxy->supports(AnnotationProxy::Modification)
+    //  But not if this is a tag annotation because proxies don't know about those
+    &&   annotation->subType() != Okular::Annotation::ATTag
+    &&   annotation->subType() != Okular::Annotation::ABTag )
     {
         proxy->notifyModification( annotation, page, appearanceChanged );
     }
