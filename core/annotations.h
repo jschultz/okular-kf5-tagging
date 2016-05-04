@@ -670,7 +670,7 @@ class OKULARCORE_EXPORT Annotation
          *
          * @since 0.17 (KDE 4.11)
          */
-        void setAnnotationProperties( const QDomNode & node );
+        virtual void setAnnotationProperties( const QDomNode & node );
 
     protected:
         /// @cond PRIVATE
@@ -1737,6 +1737,8 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          * Destroys the text tagging.
          */
         ~TextTagAnnotation();
+
+        virtual void setAnnotationProperties( const QDomNode& node );
 
         /**
          * Returns the sub type of the text tagging.

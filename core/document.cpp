@@ -3257,6 +3257,8 @@ bool Document::canModifyPageAnnotation( const Annotation * annotation ) const
         case Annotation::AHighlight:
         case Annotation::AStamp:
         case Annotation::AInk:
+        case Annotation::ATTag:
+        case Annotation::ABTag:
             return true;
         default:
             return false;

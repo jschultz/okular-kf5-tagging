@@ -149,6 +149,12 @@ void AnnotsPropertiesDialog::setCaptionTextbyAnnotType()
         case Okular::Annotation::AMovie:
             captiontext = i18n( "Movie Properties" );
             break;
+        case Okular::Annotation::ATTag:
+            captiontext = i18n( "Text Tag Properties" );
+            break;
+        case Okular::Annotation::ABTag:
+            captiontext = i18n( "Box tag Properties" );
+            break;
         default:
             captiontext = i18n( "Annotation Properties" );
             break;

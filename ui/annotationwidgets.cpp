@@ -147,6 +147,12 @@ AnnotationWidget * AnnotationWidgetFactory::widgetFor( Okular::Annotation * ann 
         case Okular::Annotation::ACaret:
             return new CaretAnnotationWidget( ann );
             break;
+        case Okular::Annotation::ATTag:
+            return new TextTagAnnotationWidget( ann );
+            break;
+//         case Okular::Annotation::ABTag:
+//             return new BoxTagAnnotationWidget( ann );
+//             break;
         // shut up gcc
         default:
             ;
@@ -771,6 +777,57 @@ void CaretAnnotationWidget::applyChanges()
     m_caretAnn->setCaretSymbol( caretSymbolFromIcon( m_pixmapSelector->icon() ) );
 }
 
+TextTagAnnotationWidget::TextTagAnnotationWidget( Okular::Annotation * ann )
+    : AnnotationWidget( ann ), m_QDANode( 0 )
+{
+    m_tTagAnn = static_cast< Okular::TextTagAnnotation * >( ann );
+}
+
+QWidget * TextTagAnnotationWidget::createExtraWidget()
+{
+    QWidget * widget = new QWidget();
+    widget->setWindowTitle( i18nc( "Node", "Node" ) );
+
+    QVBoxLayout * lay = new QVBoxLayout( widget );
+    lay->setMargin( 0 );
+    QHBoxLayout * nodelay = new QHBoxLayout();
+    lay->addLayout( nodelay );
+
+    QLabel * tmplabel = new QLabel( i18n( "&Node:" ), widget );
+    nodelay->addWidget( tmplabel, 0, Qt::AlignRight );
+    m_QDANode = new KComboBox( widget );
+    tmplabel->setBuddy( m_QDANode );
+    nodelay->addWidget( m_QDANode );
+
+
+//     QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
+//     for ( ; nIt != nEnd; ++nIt )
+//     {
+//         QPixmap pixmap(100,100);
+//         pixmap.fill((*nIt)->color());
+//         QAction * tagSelection = menu.addAction ( QIcon(pixmap), i18n ("Tag") );
+//         tagSelections->append( tagSelection );
+//     }
+
+    m_QDANode->addItem( i18n("One") );
+    m_QDANode->addItem( i18n("Two") );
+
+    connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
+
+    return widget;
+}
+
+QWidget * TextTagAnnotationWidget::createStyleWidget()
+{
+    return 0;
+}
+
+void TextTagAnnotationWidget::applyChanges()
+{
+    AnnotationWidget::applyChanges();
+
+//    m_tTagAnn->setNode( m_QDANode->currentRow() );
+}
 
 
 #include "moc_annotationwidgets.cpp"

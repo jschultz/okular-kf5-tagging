@@ -365,6 +365,9 @@ Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::
 
 RegularAreaRect* Page::TextReferenceArea( const Okular::TextReference* ref ) const
 {
+    if (! d->m_text )
+        d->m_doc->m_parent->requestTextPage( d->m_page->number() );
+
     return d->m_text->TextReferenceArea( ref );
 }
 

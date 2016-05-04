@@ -3118,6 +3118,23 @@ TextTagAnnotation::~TextTagAnnotation()
 {
 }
 
+void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
+{
+    Annotation::setAnnotationProperties( node );
+
+    Q_D( TextTagAnnotation );
+
+    //  Since the TextTagAnnotationPrivate record has been recreated, we need to
+    //  recalculate the text area fields.
+    d->m_textArea = d->m_page->m_page->TextReferenceArea( d->m_ref );
+    d->m_transformedTextArea = new RegularAreaRect;
+    int end = d->m_textArea->count();
+    for (int i = 0; i < end; i++ )
+        d->m_transformedTextArea->append (d->m_textArea->at(i));
+
+    d->m_transformedTextArea->transform( d->m_page->rotationMatrix() );
+}
+
 void TextTagAnnotation::setNode ( const QDANode *node )
 {
     Q_D( TextTagAnnotation );
@@ -3190,13 +3207,9 @@ void TextTagAnnotationPrivate::resetTransformation()
 {
     AnnotationPrivate::resetTransformation();
 
-    if (! m_page->m_page->hasTextPage() )
-        m_page->m_doc->m_parent->requestTextPage( m_page->m_page->number() );
-
     delete m_textArea;
     m_textArea = m_page->m_page->TextReferenceArea( m_ref );
 
-//     *m_transformedTextArea = *m_textArea;
     delete m_transformedTextArea;
     m_transformedTextArea = new RegularAreaRect;
     int end = m_textArea->count();
