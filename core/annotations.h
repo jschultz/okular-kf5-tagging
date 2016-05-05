@@ -22,6 +22,7 @@
 #include "area.h"
 #include "ui/pageview.h"
 #include "textpage.h"
+#include "qdanodes.h"
 
 namespace Okular {
 
@@ -50,7 +51,6 @@ class WidgetAnnotationPrivate;
 class RichMediaAnnotationPrivate;
 class TextTagAnnotationPrivate;
 class BoxTagAnnotationPrivate;
-class QDANode;
 
 /**
  * @short Helper class for (recursive) annotation retrieval/storage.
@@ -1828,32 +1828,6 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
 private:
         Q_DECLARE_PRIVATE( BoxTagAnnotation )
         Q_DISABLE_COPY( BoxTagAnnotation )
-};
-
-/**
- * @short Helper class for node retrieval/storage.
- */
-class OKULARCORE_EXPORT QDANodeUtils
-{
-    public:
-        static QList< QDANode * > * QDANodes ;
-
-        static QDANode * retrieveNode(int id);
-};
-
-class OKULARCORE_EXPORT QDANode
-{
-    friend class QDANodeUtils;
-
-    public:
-        QDANode();
-        ~QDANode();
-
-        unsigned int color() const;
-        int id()             const;
-
-    protected:
-        int m_id;
 };
 
 }

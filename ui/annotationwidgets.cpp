@@ -28,6 +28,7 @@
 
 #include "core/document.h"
 #include "guiutils.h"
+#include "qdanodes.h"
 
 #define FILEATTACH_ICONSIZE 48
 
@@ -796,21 +797,21 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     QLabel * tmplabel = new QLabel( i18n( "&Node:" ), widget );
     nodelay->addWidget( tmplabel, 0, Qt::AlignRight );
     m_QDANode = new KComboBox( widget );
+//     m_QDANode->setEditable( true );
     tmplabel->setBuddy( m_QDANode );
     nodelay->addWidget( m_QDANode );
 
-
-//     QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
-//     for ( ; nIt != nEnd; ++nIt )
-//     {
-//         QPixmap pixmap(100,100);
-//         pixmap.fill((*nIt)->color());
-//         QAction * tagSelection = menu.addAction ( QIcon(pixmap), i18n ("Tag") );
-//         tagSelections->append( tagSelection );
-//     }
-
-    m_QDANode->addItem( i18n("One") );
-    m_QDANode->addItem( i18n("Two") );
+    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
+    int i = 0;
+    for ( ; nIt != nEnd; ++nIt )
+    {
+        QPixmap pixmap(100,100);
+        pixmap.fill((*nIt)->color());
+        m_QDANode->addItem( pixmap, i18n("Tag") );
+//         m_QDANode->setItemData( i, QColor((*nIt)->color()), Qt::TextColorRole );
+        i++;
+    }
+    m_QDANode->setCurrentIndex( m_tTagAnn->node()->id() );
 
     connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
 
@@ -826,7 +827,7 @@ void TextTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-//    m_tTagAnn->setNode( m_QDANode->currentRow() );
+    m_tTagAnn->setNode( Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() ) );
 }
 
 
