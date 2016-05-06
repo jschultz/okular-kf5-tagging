@@ -64,6 +64,15 @@ static unsigned int lastQDANode = 0;
 
 QList< QDANode * > * QDANodeUtils::QDANodes = 0;
 
+void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
+{
+    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
+    for ( ; nIt != nEnd; ++nIt )
+    {
+        (*nIt)->store( QDAElement, doc );
+    }
+}
+
 QDANode * QDANodeUtils::retrieveNode ( int id )
 {
     if ( !QDANodeUtils::QDANodes )
@@ -94,8 +103,63 @@ QDANode::QDANode()
     QDANodeUtils::QDANodes-> append(this);
 }
 
+QDomElement findChildElement( const QDomNode & parentNode,
+    const QString & name )
+{
+    // loop through the whole children and return a 'name' named element
+    QDomNode subNode = parentNode.firstChild();
+    while( subNode.isElement() )
+    {
+        QDomElement element = subNode.toElement();
+        if ( element.tagName() == name )
+            return element;
+        subNode = subNode.nextSibling();
+    }
+    // if the name can't be found, return a dummy null element
+    return QDomElement();
+}
+
+QDANode::QDANode(const QDomNode& node)
+{
+    QDomElement e = findChildElement( node, QStringLiteral("node") );
+
+    if ( e.isNull() )
+        return;
+
+    if ( e.hasAttribute( QStringLiteral("id") ) )
+        m_uniqueName = e.attribute( QStringLiteral("id") ).toInt();
+    if ( e.hasAttribute( QStringLiteral("uniqueName") ) )
+        m_uniqueName = e.attribute( QStringLiteral("uniqueName") );
+    if ( e.hasAttribute( QStringLiteral("name") ) )
+        m_name = e.attribute( QStringLiteral("name") );
+    if ( e.hasAttribute( QStringLiteral("author") ) )
+        m_author = e.attribute( QStringLiteral("author") );
+    if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
+        m_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
+    if ( e.hasAttribute( QStringLiteral("creationDate") ) )
+        m_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
+}
+
 QDANode::~QDANode()
 {
+}
+
+void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
+{
+    QDomElement e = document.createElement( QStringLiteral("node") );
+    QDANode.appendChild( e );
+
+    e.setAttribute( QStringLiteral("id"), QString::number( this->m_id ) );
+    if ( !this->m_name.isEmpty() )
+        e.setAttribute( QStringLiteral("name"), this->m_name );
+    if ( !this->m_uniqueName.isEmpty() )
+        e.setAttribute( QStringLiteral("uniqueName"), this->m_uniqueName );
+    if ( !this->m_author.isEmpty() )
+        e.setAttribute( QStringLiteral("author"), this->m_author );
+    if ( this->m_modifyDate.isValid() )
+        e.setAttribute( QStringLiteral("modifyDate"), this->m_modifyDate.toString(Qt::ISODate) );
+    if ( this->m_creationDate.isValid() )
+        e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
 }
 
 int QDANode::id() const

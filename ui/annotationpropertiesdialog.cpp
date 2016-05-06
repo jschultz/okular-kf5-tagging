@@ -54,7 +54,7 @@ AnnotsPropertiesDialog::AnnotsPropertiesDialog( QWidget *parent, Okular::Documen
     //BEGIN tab1
     QWidget *appearanceWidget = m_annotWidget->appearanceWidget();
     appearanceWidget->setEnabled( canEditAnnotations );
-    addPage( appearanceWidget, i18n( "&Appearance" ) );
+    KPageWidgetItem* appearancePage = addPage( appearanceWidget, i18n( "&Appearance" ) );
     //END tab1
 
     //BEGIN tab 2
@@ -85,7 +85,11 @@ AnnotsPropertiesDialog::AnnotsPropertiesDialog( QWidget *parent, Okular::Documen
     QWidget * extraWidget = m_annotWidget->extraWidget();
     if ( extraWidget )
     {
-        addPage( extraWidget, extraWidget->windowTitle() );
+        //  This is a bit messy, but we want the 'extra' widget page to appear first for tags.
+        if ( ann->subType() == Okular::Annotation::ATTag || ann->subType() == Okular::Annotation::ABTag )
+            insertPage( appearancePage, extraWidget, extraWidget->windowTitle() );
+        else
+            addPage( extraWidget, extraWidget->windowTitle() );
     }
 
     //BEGIN connections

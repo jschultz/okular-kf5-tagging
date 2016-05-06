@@ -1235,6 +1235,11 @@ void DocumentPrivate::saveDocumentInfo() const
     root.setAttribute( QStringLiteral("url"), m_url.toDisplayString(QUrl::PreferLocalFile) );
     doc.appendChild( root );
 
+    // 1.A Save QDA nodes
+    QDomElement QDAElement = doc.createElement( QStringLiteral("QDA") );
+    root.appendChild( QDAElement );
+    QDANodeUtils::storeQDANodes( QDAElement, doc );
+
     // 2.1. Save page attributes (bookmark state, annotations, ... ) to DOM
     QDomElement pageList = doc.createElement( QStringLiteral("pageList") );
     root.appendChild( pageList );

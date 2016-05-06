@@ -11,7 +11,10 @@
 #define _OKULAR_QDANODES_H_
 
 #include <QtCore/QString>
+#include <QtCore/QDateTime>
 #include <QtCore/QLinkedList>
+#include <QtXml/QDomDocument>
+#include <QtXml/QDomElement>
 
 #include "okularcore_export.h"
 
@@ -28,6 +31,8 @@ class OKULARCORE_EXPORT QDANodeUtils
     public:
         static QList< QDANode * > * QDANodes ;
 
+        static void storeQDANodes( QDomElement & QDAElement, QDomDocument & doc );
+
         static QDANode * retrieveNode(int id);
 };
 
@@ -37,7 +42,10 @@ class OKULARCORE_EXPORT QDANode
 
     public:
         QDANode();
+        QDANode(const QDomNode& node);
         ~QDANode();
+
+        void store( QDomNode & QDANode, QDomDocument & document ) const;
 
         unsigned int color() const;
         int id()             const;
@@ -50,6 +58,10 @@ class OKULARCORE_EXPORT QDANode
 
     private:
         QString m_name;
+        QString m_author;
+        QString m_uniqueName;
+        QDateTime m_modifyDate;
+        QDateTime m_creationDate;
 };
 
 }

@@ -274,18 +274,24 @@ private:
     QComboBox * m_QDANode;
 };
 
-// public:
-//     explicit BoxTagAnnotationWidget( Okular::Annotation * ann );
-//
-//     void applyChanges() Q_DECL_OVERRIDE;
-//
-// protected:
-//     QWidget * createStyleWidget() Q_DECL_OVERRIDE;
-//
-// private:
-//     Okular::BoxTagAnnotation * m_bTagAnn;
-//
-//     QListWidget * m_listQDANode;
-// };
+class BoxTagAnnotationWidget
+  : public AnnotationWidget
+{
+    Q_OBJECT
+
+public:
+    explicit BoxTagAnnotationWidget( Okular::Annotation * ann );
+
+    void applyChanges() Q_DECL_OVERRIDE;
+
+protected:
+    QWidget * createStyleWidget() Q_DECL_OVERRIDE;
+    QWidget * createExtraWidget() Q_DECL_OVERRIDE;
+
+private:
+    Okular::BoxTagAnnotation * m_tTagAnn;
+
+    QComboBox * m_QDANode;
+};
 
 #endif

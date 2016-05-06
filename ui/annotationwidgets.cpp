@@ -151,9 +151,9 @@ AnnotationWidget * AnnotationWidgetFactory::widgetFor( Okular::Annotation * ann 
         case Okular::Annotation::ATTag:
             return new TextTagAnnotationWidget( ann );
             break;
-//         case Okular::Annotation::ABTag:
-//             return new BoxTagAnnotationWidget( ann );
-//             break;
+        case Okular::Annotation::ABTag:
+            return new BoxTagAnnotationWidget( ann );
+            break;
         // shut up gcc
         default:
             ;
@@ -797,7 +797,7 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     QLabel * tmplabel = new QLabel( i18n( "&Node:" ), widget );
     nodelay->addWidget( tmplabel, 0, Qt::AlignRight );
     m_QDANode = new KComboBox( widget );
-//     m_QDANode->setEditable( true );
+    m_QDANode->setEditable( true );
     tmplabel->setBuddy( m_QDANode );
     nodelay->addWidget( m_QDANode );
 
@@ -807,13 +807,14 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     {
         QPixmap pixmap(100,100);
         pixmap.fill((*nIt)->color());
-        m_QDANode->addItem( pixmap, i18n("Tag") );
+        m_QDANode->addItem( pixmap, (*nIt)->Name() );
 //         m_QDANode->setItemData( i, QColor((*nIt)->color()), Qt::TextColorRole );
         i++;
     }
     m_QDANode->setCurrentIndex( m_tTagAnn->node()->id() );
 
     connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
+    connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
 
     return widget;
 }
@@ -827,8 +828,66 @@ void TextTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    m_tTagAnn->setNode( Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() ) );
+    Okular::QDANode * node = Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() );
+    QString nodeName = m_QDANode->currentText();
+    m_tTagAnn->setNode( node );
+    node->setName( nodeName );
 }
 
+BoxTagAnnotationWidget::BoxTagAnnotationWidget( Okular::Annotation * ann )
+    : AnnotationWidget( ann ), m_QDANode( 0 )
+{
+    m_tTagAnn = static_cast< Okular::BoxTagAnnotation * >( ann );
+}
+
+QWidget * BoxTagAnnotationWidget::createExtraWidget()
+{
+    QWidget * widget = new QWidget();
+    widget->setWindowTitle( i18nc( "Node", "Node" ) );
+
+    QVBoxLayout * lay = new QVBoxLayout( widget );
+    lay->setMargin( 0 );
+    QHBoxLayout * nodelay = new QHBoxLayout();
+    lay->addLayout( nodelay );
+
+    QLabel * tmplabel = new QLabel( i18n( "&Node:" ), widget );
+    nodelay->addWidget( tmplabel, 0, Qt::AlignRight );
+    m_QDANode = new KComboBox( widget );
+    m_QDANode->setEditable( true );
+    tmplabel->setBuddy( m_QDANode );
+    nodelay->addWidget( m_QDANode );
+
+    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
+    int i = 0;
+    for ( ; nIt != nEnd; ++nIt )
+    {
+        QPixmap pixmap(100,100);
+        pixmap.fill((*nIt)->color());
+        m_QDANode->addItem( pixmap, (*nIt)->Name() );
+//         m_QDANode->setItemData( i, QColor((*nIt)->color()), Qt::TextColorRole );
+        i++;
+    }
+    m_QDANode->setCurrentIndex( m_tTagAnn->node()->id() );
+
+    connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
+    connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
+
+    return widget;
+}
+
+QWidget * BoxTagAnnotationWidget::createStyleWidget()
+{
+    return 0;
+}
+
+void BoxTagAnnotationWidget::applyChanges()
+{
+    AnnotationWidget::applyChanges();
+
+    Okular::QDANode * node = Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() );
+    QString nodeName = m_QDANode->currentText();
+    m_tTagAnn->setNode( node );
+    node->setName( nodeName );
+}
 
 #include "moc_annotationwidgets.cpp"
