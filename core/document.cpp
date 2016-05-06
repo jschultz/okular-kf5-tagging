@@ -645,8 +645,13 @@ void DocumentPrivate::loadDocumentInfo( QFile &infoFile )
     {
         QString catName = topLevelNode.toElement().tagName();
 
+        if ( catName == QLatin1String("QDA") )
+        // Restore local QDA information
+        {
+            QDANodeUtils::load( topLevelNode );
+        }
         // Restore page attributes (bookmark, annotations, ...) from the DOM
-        if ( catName == QLatin1String("pageList") )
+        else if ( catName == QLatin1String("pageList") )
         {
             QDomNode pageNode = topLevelNode.firstChild();
             while ( pageNode.isElement() )

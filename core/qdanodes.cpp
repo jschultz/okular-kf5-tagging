@@ -10,6 +10,7 @@
 #include "qdanodes.h"
 
 // qt/kde includes
+#include <QtCore/QUuid>
 #include <QtGui/QColor>
 
 using namespace Okular;
@@ -60,12 +61,27 @@ static QRgb tagColors [] = {
         0xFF252F99, 0xFF00CCFF, 0xFF674E60, 0xFFFC009C, 0xFF92896B
 };
 
-static unsigned int lastQDANode = 0;
-
 QList< QDANode * > * QDANodeUtils::QDANodes = 0;
+
+QDANode * QDANodeUtils::retrieve( QString m_uniqueName )
+{
+    if (! QDANodes )
+        return 0;
+
+    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
+    for ( ; nIt != nEnd; ++nIt )
+    {
+        if ( (*nIt)->uniqueName() == m_uniqueName )
+            return *nIt;
+    }
+    return 0;
+}
 
 void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
 {
+    if (! QDANodes )
+        return;
+
     QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
     for ( ; nIt != nEnd; ++nIt )
     {
@@ -73,71 +89,88 @@ void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
     }
 }
 
-QDANode * QDANodeUtils::retrieveNode ( int id )
+void QDANodeUtils::load(const QDomNode& node)
 {
-    if ( !QDANodeUtils::QDANodes )
-        QDANodeUtils::QDANodes = new QList< QDANode * >();
+    QDomElement e = node.firstChildElement( QStringLiteral("node") );
 
-    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
-    for ( ; nIt != nEnd; ++nIt )
+    while (! e.isNull() )
     {
-        if ( (*nIt)->m_id == id )
-            return *nIt;
+        QDANode *qdanode;
+        if ( e.hasAttribute( QStringLiteral("uniqueName") ) )
+        {
+            QString uniqueName = e.attribute( QStringLiteral("uniqueName") );
+            qdanode = QDANodeUtils::retrieve( uniqueName );
+
+            if ( qdanode )
+            {
+                //  If same qdanode is already loaded, then more recent one replaces the other.
+                QDateTime old_creationDate, old_modifyDate, new_creationDate, new_modifyDate;
+
+                old_creationDate = qdanode->creationDate();
+                old_modifyDate   = qdanode->modificationDate();
+
+                if ( e.hasAttribute( QStringLiteral("creationDate") ) )
+                    new_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
+                if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
+                    new_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
+
+                new_modifyDate = std::max ( new_creationDate, new_modifyDate );
+                if ( new_modifyDate > std::max ( old_creationDate, old_modifyDate ) )
+                {
+                    if (! new_modifyDate.isNull() )
+                    {
+                        qdanode->setModificationDate ( new_modifyDate );
+                    }
+                    if ( e.hasAttribute( QStringLiteral("author") ) )
+                        qdanode->setAuthor( e.attribute(QStringLiteral("author")) );
+                    if ( e.hasAttribute( QStringLiteral("name") ) )
+                        qdanode->setName( e.attribute(QStringLiteral("name")) );
+                }
+                //  Escape from if-else nest.
+                e = e.nextSiblingElement( QStringLiteral("node") );
+                continue;
+            }
+            else
+                qdanode = new QDANode( uniqueName );
+        }
+        else
+            qdanode = new QDANode();
+
+        if ( e.hasAttribute( QStringLiteral("name") ) )
+            qdanode->m_name = e.attribute( QStringLiteral("name") );
+        if ( e.hasAttribute( QStringLiteral("author") ) )
+            qdanode->m_author = e.attribute( QStringLiteral("author") );
+        if ( e.hasAttribute( QStringLiteral("creationDate") ) )
+            qdanode->m_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
+        if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
+            qdanode->m_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
+
+        e = e.nextSiblingElement( QStringLiteral("node") );
     }
-
-    QDANode * node = new QDANode();
-    node->m_id = id;
-    if ( id <= lastQDANode )
-        lastQDANode = id + 1;
-
-    return node;
 }
 
 QDANode::QDANode()
 {
-    this->m_id = lastQDANode++;
+    QString uniqueName = "okular-" + QUuid::createUuid().toString();
 
     if ( !QDANodeUtils::QDANodes )
         QDANodeUtils::QDANodes = new QList< QDANode * >();
 
+    m_uniqueName = uniqueName;
+    m_color = tagColors[ QDANodeUtils::QDANodes->length() ];
+
     QDANodeUtils::QDANodes-> append(this);
 }
 
-QDomElement findChildElement( const QDomNode & parentNode,
-    const QString & name )
+QDANode::QDANode( QString uniqueName )
 {
-    // loop through the whole children and return a 'name' named element
-    QDomNode subNode = parentNode.firstChild();
-    while( subNode.isElement() )
-    {
-        QDomElement element = subNode.toElement();
-        if ( element.tagName() == name )
-            return element;
-        subNode = subNode.nextSibling();
-    }
-    // if the name can't be found, return a dummy null element
-    return QDomElement();
-}
+    if ( !QDANodeUtils::QDANodes )
+        QDANodeUtils::QDANodes = new QList< QDANode * >();
 
-QDANode::QDANode(const QDomNode& node)
-{
-    QDomElement e = findChildElement( node, QStringLiteral("node") );
+    m_uniqueName = uniqueName;
+    m_color = tagColors[ QDANodeUtils::QDANodes->length() ];
 
-    if ( e.isNull() )
-        return;
-
-    if ( e.hasAttribute( QStringLiteral("id") ) )
-        m_uniqueName = e.attribute( QStringLiteral("id") ).toInt();
-    if ( e.hasAttribute( QStringLiteral("uniqueName") ) )
-        m_uniqueName = e.attribute( QStringLiteral("uniqueName") );
-    if ( e.hasAttribute( QStringLiteral("name") ) )
-        m_name = e.attribute( QStringLiteral("name") );
-    if ( e.hasAttribute( QStringLiteral("author") ) )
-        m_author = e.attribute( QStringLiteral("author") );
-    if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
-        m_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
-    if ( e.hasAttribute( QStringLiteral("creationDate") ) )
-        m_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
+    QDANodeUtils::QDANodes-> append(this);
 }
 
 QDANode::~QDANode()
@@ -149,7 +182,6 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
     QDomElement e = document.createElement( QStringLiteral("node") );
     QDANode.appendChild( e );
 
-    e.setAttribute( QStringLiteral("id"), QString::number( this->m_id ) );
     if ( !this->m_name.isEmpty() )
         e.setAttribute( QStringLiteral("name"), this->m_name );
     if ( !this->m_uniqueName.isEmpty() )
@@ -162,14 +194,9 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
         e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
 }
 
-int QDANode::id() const
+QString QDANode::uniqueName() const
 {
-    return this->m_id;
-}
-
-unsigned int QDANode::color() const
-{
-    return tagColors[ this->m_id ];
+    return m_uniqueName;
 }
 
 void QDANode::setName( QString name )
@@ -177,9 +204,49 @@ void QDANode::setName( QString name )
     m_name = name;
 }
 
-QString QDANode::Name()
+QString QDANode::name() const
 {
     return m_name;
+}
+
+void QDANode::setColor( QRgb color )
+{
+    m_color = color;
+}
+
+QRgb QDANode::color() const
+{
+    return m_color;
+}
+
+void QDANode::setAuthor( QString author )
+{
+    m_author = author;
+}
+
+QString QDANode::author() const
+{
+    return m_author;
+}
+
+void QDANode::setCreationDate( QDateTime creationDate )
+{
+    m_creationDate = creationDate;
+}
+
+QDateTime QDANode::creationDate() const
+{
+    return m_creationDate;
+}
+
+void QDANode::setModificationDate( QDateTime modificationDate )
+{
+    m_modifyDate = modificationDate;
+}
+
+QDateTime QDANode::modificationDate() const
+{
+    return m_modifyDate;
 }
 
 //END QDANode implementation

@@ -2782,7 +2782,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                 {
                     QPixmap pixmap(100,100);
                     pixmap.fill((*nIt)->color());
-                    QAction * tagSelection = menu.addAction ( QIcon(pixmap), i18n ("Tag") );
+                    QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
                     tagSelections->append( tagSelection );
                 }
             }
@@ -2854,7 +2854,10 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                 {
                     Okular::QDANode * node = 0;
                     if ( choice == newNode )
+                    {
                         node = new Okular::QDANode();
+                        node->setName( "New" );
+                    }
                     else
                     {
                         QList< QAction * >::const_iterator aIt = tagSelections->constBegin(), aEnd = tagSelections->constEnd();
@@ -3106,7 +3109,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                             {
                                 QPixmap pixmap(100,100);
                                 pixmap.fill((*nIt)->color());
-                                QAction * tagSelection = menu.addAction ( QIcon(pixmap), i18n ("Tag") );
+                                QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
                                 tagSelections->append( tagSelection );
                             }
                         }
@@ -3131,7 +3134,10 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                             {
                                 Okular::QDANode * node = 0;
                                 if ( choice == newNode )
+                                {
                                     node = new Okular::QDANode();
+                                    node->setName( "New" );
+                                }
                                 else
                                 {
                                     QList< QAction * >::const_iterator aIt = tagSelections->constBegin(), aEnd = tagSelections->constEnd();

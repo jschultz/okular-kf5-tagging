@@ -807,11 +807,11 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     {
         QPixmap pixmap(100,100);
         pixmap.fill((*nIt)->color());
-        m_QDANode->addItem( pixmap, (*nIt)->Name() );
-//         m_QDANode->setItemData( i, QColor((*nIt)->color()), Qt::TextColorRole );
+        m_QDANode->addItem( pixmap, (*nIt)->name() );
+        if ( (*nIt)->uniqueName() == m_tTagAnn->node()->uniqueName() )
+            m_QDANode->setCurrentIndex( i );
         i++;
     }
-    m_QDANode->setCurrentIndex( m_tTagAnn->node()->id() );
 
     connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
     connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
@@ -828,7 +828,7 @@ void TextTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() );
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes->at( m_QDANode->currentIndex() );
     QString nodeName = m_QDANode->currentText();
     m_tTagAnn->setNode( node );
     node->setName( nodeName );
@@ -863,11 +863,11 @@ QWidget * BoxTagAnnotationWidget::createExtraWidget()
     {
         QPixmap pixmap(100,100);
         pixmap.fill((*nIt)->color());
-        m_QDANode->addItem( pixmap, (*nIt)->Name() );
-//         m_QDANode->setItemData( i, QColor((*nIt)->color()), Qt::TextColorRole );
+        m_QDANode->addItem( pixmap, (*nIt)->name() );
+        if ( (*nIt)->uniqueName() == m_tTagAnn->node()->uniqueName() )
+            m_QDANode->setCurrentIndex( i );
         i++;
     }
-    m_QDANode->setCurrentIndex( m_tTagAnn->node()->id() );
 
     connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
     connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
@@ -884,7 +884,7 @@ void BoxTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::retrieveNode( m_QDANode->currentIndex() );
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes->at( m_QDANode->currentIndex() );
     QString nodeName = m_QDANode->currentText();
     m_tTagAnn->setNode( node );
     node->setName( nodeName );

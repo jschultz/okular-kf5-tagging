@@ -144,6 +144,8 @@ void AnnotationUtils::storeAnnotation( const Annotation * ann, QDomElement & ann
     ann->store( annElement, document );
 }
 
+
+//  JS: This function is redundant - it is identical to QDomNode::firstChildElement
 QDomElement AnnotationUtils::findChildElement( const QDomNode & parentNode,
     const QString & name )
 {
@@ -3177,7 +3179,7 @@ void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 
     // store the optional attributes
     if ( d->m_node )
-        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->id() );
+        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
 
     if ( d->m_ref )   //  Shouldn't happen unless file record is corrupt
     {
@@ -3232,8 +3234,9 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
         // parse the attributes
         if ( e.hasAttribute( QStringLiteral("node") ) )
-            m_node = QDANodeUtils::retrieveNode( e.attribute( "node" ).toInt() );
-        else
+            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+
+        if (! m_node )
             m_node = new QDANode ();
 
         QDomNode taggingNode = e.firstChild();
@@ -3347,7 +3350,7 @@ void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 
     // store the optional attributes
     if ( d->m_node )
-        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->id() );
+        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
 }
 
 QPixmap BoxTagAnnotation::pixmap() const
@@ -3401,7 +3404,10 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
         // parse the attributes
         if ( e.hasAttribute( QStringLiteral("node") ) )
-            m_node = QDANodeUtils::retrieveNode( e.attribute( "node" ).toInt() );
+            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+
+        if (! m_node )
+            m_node = new QDANode ();
 
         // loading complete
         break;

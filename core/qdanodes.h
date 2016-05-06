@@ -13,6 +13,7 @@
 #include <QtCore/QString>
 #include <QtCore/QDateTime>
 #include <QtCore/QLinkedList>
+#include <QtGui/QColor>
 #include <QtXml/QDomDocument>
 #include <QtXml/QDomElement>
 
@@ -31,9 +32,10 @@ class OKULARCORE_EXPORT QDANodeUtils
     public:
         static QList< QDANode * > * QDANodes ;
 
-        static void storeQDANodes( QDomElement & QDAElement, QDomDocument & doc );
+        static QDANode * retrieve( QString m_uniqueName );
 
-        static QDANode * retrieveNode(int id);
+        static void storeQDANodes( QDomElement & QDAElement, QDomDocument & doc );
+        static void load(const QDomNode& node);
 };
 
 class OKULARCORE_EXPORT QDANode
@@ -42,26 +44,35 @@ class OKULARCORE_EXPORT QDANode
 
     public:
         QDANode();
-        QDANode(const QDomNode& node);
+        QDANode( QString uniqueName );
         ~QDANode();
 
         void store( QDomNode & QDANode, QDomDocument & document ) const;
 
-        unsigned int color() const;
-        int id()             const;
+        QString uniqueName() const;
 
         void setName( QString name );
-        QString Name();
+        QString name() const;
+
+        void setColor( QRgb color );
+        QRgb color () const;
+
+        void setAuthor( QString author );
+        QString author() const;
+
+        void setCreationDate( QDateTime creationDate );
+        QDateTime creationDate() const;
+
+        void setModificationDate( QDateTime modificationDate );
+        QDateTime modificationDate() const;
 
     protected:
-        int m_id;
-
-    private:
-        QString m_name;
-        QString m_author;
         QString m_uniqueName;
-        QDateTime m_modifyDate;
+        QString m_name;
+        QRgb    m_color;
+        QString m_author;
         QDateTime m_creationDate;
+        QDateTime m_modifyDate;
 };
 
 }
