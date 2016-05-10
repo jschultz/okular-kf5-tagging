@@ -177,6 +177,7 @@ QRect AnnotationUtils::annotationGeometry( const Annotation * ann,
 
     return rect;
 }
+
 //END AnnotationUtils implementation
 
 AnnotationProxy::~AnnotationProxy()
@@ -533,6 +534,23 @@ Annotation::~Annotation()
         d_ptr->m_disposeFunc( this );
 
     delete d_ptr;
+}
+
+Annotation *Annotation::head()
+{
+    return this;
+}
+
+Annotation *Annotation::next()
+{
+    return 0;
+}
+
+const Page * Annotation::page() const
+{
+    Q_D( const Annotation );
+
+    return d->m_page->m_page;
 }
 
 void Annotation::setAuthor( const QString &author )
@@ -3061,7 +3079,7 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
         TextTagAnnotationPrivate()
-            : AnnotationPrivate(), m_node( 0 ), m_ref( 0 ), m_textArea( 0 ), m_transformedTextArea( 0 )
+            : AnnotationPrivate(), m_head( 0 ), m_next( 0 ), m_node( 0 ), m_ref( 0 ), m_textArea( 0 ), m_transformedTextArea( 0 )
         {
         }
 
@@ -3079,34 +3097,27 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual AnnotationPrivate* getNewAnnotationPrivate();
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
+        TextTagAnnotation *m_head, *m_next;
+
         const QDANode *m_node;
         const TextReference * m_ref;
         RegularAreaRect * m_textArea;
         RegularAreaRect * m_transformedTextArea;
 };
 
-/*
-  The default textIcon for text annotation is Note as the PDF Reference says
-*/
-TextTagAnnotation::TextTagAnnotation()
-    : Annotation( *new TextTagAnnotationPrivate() )
-{
-}
-
-TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
-    : Annotation( *new TextTagAnnotationPrivate(), node )
-{
-}
+//  Static variable
+QHash<QString, TextTagAnnotation *> TextTagAnnotation::tTagAnnotationTable;
 
 TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * ref )
     : Annotation( *new TextTagAnnotationPrivate() )
 {
     Q_D( TextTagAnnotation );
 
+    if (! d->m_head )
+        d->m_head = this;
+
     d->m_ref = ref;
-
     d->m_textArea = page->TextReferenceArea( ref );
-
     NormalizedRect rect = d->m_textArea->first();
     int end = d->m_textArea->count();
     for (int i = 1; i < end; i++ )
@@ -3116,8 +3127,67 @@ TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * r
     d->m_boundary = rect;
 }
 
+TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * page, const TextReference * ref )
+    : TextTagAnnotation( page, ref )
+{
+    Q_D( TextTagAnnotation );
+
+    d->m_head = head;
+    const TextTagAnnotation  *tTagIt = head;
+    TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+
+    while ( tTagPIt->m_next )
+    {
+        tTagIt = tTagPIt->m_next;
+        tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+    }
+    tTagPIt->m_next = this;
+}
+
+TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
+    : Annotation( *new TextTagAnnotationPrivate(), node )
+{
+    Q_D( TextTagAnnotation );
+
+    if (! d->m_head )
+        d->m_head = this;
+    else
+    {
+        TextTagAnnotation * tTagIt = d->m_head;
+        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        //  Second part of condition shouldn't ever happen, but including it will prevent looping
+        //  in case of data inconsistency.
+        while ( tTagPIt->m_next && tTagPIt->m_next != this )
+        {
+            tTagIt = tTagPIt->m_next;
+            tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        }
+        tTagPIt->m_next = this;
+    }
+
+    //  Save this tag for future lookup
+    tTagAnnotationTable[d->m_uniqueName] = this;
+}
+
 TextTagAnnotation::~TextTagAnnotation()
 {
+    Q_D( TextTagAnnotation );
+
+    tTagAnnotationTable[d->m_uniqueName] = 0;
+}
+
+TextTagAnnotation::Annotation * TextTagAnnotation::head()
+{
+    Q_D( const TextTagAnnotation );
+
+    return d->m_head;
+}
+
+TextTagAnnotation::Annotation * TextTagAnnotation::next()
+{
+    Q_D( const TextTagAnnotation );
+
+    return d->m_next;
 }
 
 void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
@@ -3125,6 +3195,20 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     Annotation::setAnnotationProperties( node );
 
     Q_D( TextTagAnnotation );
+
+    if ( d->m_head )
+    {
+        TextTagAnnotation * tTagIt = d->m_head;
+        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        //  Second part of condition shouldn't ever happen, but including it will prevent looping
+        //  in case of data inconsistency.
+        while ( tTagPIt->m_next && tTagPIt->m_next != this )
+        {
+            tTagIt = tTagPIt->m_next;
+            tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        }
+        tTagPIt->m_next = this;
+    }
 
     //  Since the TextTagAnnotationPrivate record has been recreated, we need to
     //  recalculate the text area fields.
@@ -3137,15 +3221,17 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     d->m_transformedTextArea->transform( d->m_page->rotationMatrix() );
 }
 
-void TextTagAnnotation::setNode ( const QDANode *node )
+void TextTagAnnotation::setNode( const QDANode *node )
 {
     Q_D( TextTagAnnotation );
+
     d->m_node = node;
 }
 
 const QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
+
     return d->m_node;
 }
 
@@ -3164,7 +3250,16 @@ Annotation::SubType TextTagAnnotation::subType() const
 QString TextTagAnnotation::text() const
 {
     Q_D( const TextTagAnnotation );
-    return d->m_page->m_page->text( d->m_transformedTextArea, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+
+    const TextTagAnnotation *tTagIt = d->m_head;
+    QString ret;
+    while ( tTagIt )
+    {
+	TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+	ret.append( tTagPIt->m_page->m_page->text( tTagPIt->m_transformedTextArea, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+	tTagIt = tTagPIt->m_next;
+    }
+    return ret;
 }
 
 void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
@@ -3178,10 +3273,12 @@ void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
     node.appendChild( TTagElement );
 
     // store the optional attributes
+    if ( d->m_head )
+        TTagElement.setAttribute( QStringLiteral("head"), d->m_head->uniqueName() );
     if ( d->m_node )
         TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
 
-    if ( d->m_ref )   //  Shouldn't happen unless file record is corrupt
+    if ( d->m_ref )   //  Shouldn't happen
     {
         QDomElement e = document.createElement( "textref" );
         TTagElement.appendChild( e );
@@ -3235,6 +3332,10 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         // parse the attributes
         if ( e.hasAttribute( QStringLiteral("node") ) )
             m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+        if ( e.hasAttribute( QStringLiteral("head") ) )
+        {
+            m_head = TextTagAnnotation::tTagAnnotationTable[ e.attribute( "head" ) ];
+        }
 
         if (! m_node )
             m_node = new QDANode ();

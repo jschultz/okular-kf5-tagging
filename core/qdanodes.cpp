@@ -18,7 +18,7 @@ using namespace Okular;
 //BEGIN QDANode implementation
 
 // From http://godsnotwheregodsnot.blogspot.ru/2013/11/kmeans-color-quantization-seeding.html
-static QRgb tagColors [] = {
+QRgb QDANodeUtils::tagColors [] = {
 
         /* 0xFF000000, */ 0xFFFFFF00, 0xFF1CE6FF, 0xFFFF34FF, 0xFFFF4A46, 0xFF008941, 0xFF006FA6, 0xFFA30059,
 
@@ -157,7 +157,7 @@ QDANode::QDANode()
         QDANodeUtils::QDANodes = new QList< QDANode * >();
 
     m_uniqueName = uniqueName;
-    m_color = tagColors[ QDANodeUtils::QDANodes->length() ];
+    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes->length() ];
 
     QDANodeUtils::QDANodes-> append(this);
 }
@@ -168,7 +168,7 @@ QDANode::QDANode( QString uniqueName )
         QDANodeUtils::QDANodes = new QList< QDANode * >();
 
     m_uniqueName = uniqueName;
-    m_color = tagColors[ QDANodeUtils::QDANodes->length() ];
+    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes->length() ];
 
     QDANodeUtils::QDANodes-> append(this);
 }

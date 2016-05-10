@@ -126,7 +126,7 @@ public:
     OkularTTS* tts();
 #endif
     QString selectedText() const;
-    void createTextTagAnnotationssfromSelection(Okular::QDANode *node) const;
+    void createTextTagAnnotationsfromSelection(Okular::QDANode *node) const;
 
     // the document, pageviewItems and the 'visible cache'
     PageView *q;
@@ -903,34 +903,35 @@ QString PageViewPrivate::selectedText() const
     return text;
 }
 
-void PageViewPrivate::createTextTagAnnotationssfromSelection(Okular::QDANode *node) const
+void PageViewPrivate::createTextTagAnnotationsfromSelection(Okular::QDANode *node) const
 {
     QList< int > selpages = pagesWithTextSelection.toList();
     qSort( selpages );
-    const Okular::Page * pg = document->page( selpages.first() );
-    Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( pg, pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+    const Okular::Page * page = document->page( selpages.first() );
+    Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( page, page->reference( page->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
     ann->setCreationDate( QDateTime::currentDateTime() );
     ann->setAuthor( Okular::Settings::identityAuthor() );
     ann->setNode (node);
-    document->addPageAnnotation( pg->number(), ann );
+    document->addPageAnnotation( page->number(), ann );
     if ( selpages.count() > 1 )
     {
+        Okular::TextTagAnnotation * head = ann;
         int end = selpages.count() - 1;
         for( int i = 1; i < end; ++i )
         {
-            pg = document->page( selpages.at( i ) );
-            Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( pg, pg->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+            page = document->page( selpages.at( i ) );
+            Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( head, page, page->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
             ann->setCreationDate( QDateTime::currentDateTime() );
             ann->setAuthor( Okular::Settings::identityAuthor() );
             ann->setNode (node);
-            document->addPageAnnotation( pg->number(), ann );
+            document->addPageAnnotation( page->number(), ann );
         }
-        pg = document->page( selpages.last() );
-        Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( pg, pg->reference( pg->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        page = document->page( selpages.last() );
+        Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( head, page, page->reference( page->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
         ann->setCreationDate( QDateTime::currentDateTime() );
         ann->setAuthor( Okular::Settings::identityAuthor() );
         ann->setNode (node);
-        document->addPageAnnotation( pg->number(), ann );
+        document->addPageAnnotation( page->number(), ann );
     }
 }
 
@@ -2239,7 +2240,10 @@ void PageView::mousePressEvent( QMouseEvent * e )
                         foreach ( const Okular::ObjectRect * annRect, annRects )
                         {
                             Okular::Annotation * ann = ( (Okular::AnnotationObjectRect *)annRect )->annotation();
-                            if ( ann && (ann->subType() != Okular::Annotation::AWidget) )
+                            if ( ann && (ann->subType() == Okular::Annotation::ATTag
+                              || ann->subType() == Okular::Annotation::ABTag) )
+                                popup.addAnnotation( ann->head(), ann->head()->page()->number() );
+                            else if ( ann && (ann->subType() != Okular::Annotation::AWidget) )
                                 popup.addAnnotation( ann, pageItem->pageNumber() );
 
                         }
@@ -3154,7 +3158,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 }
 
                                 if (node)
-                                    d->createTextTagAnnotationssfromSelection(node);
+                                    d->createTextTagAnnotationsfromSelection(node);
                             }
                         }
                     }

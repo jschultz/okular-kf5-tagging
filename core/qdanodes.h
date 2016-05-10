@@ -30,6 +30,8 @@ class QDANodeUtils;
 class OKULARCORE_EXPORT QDANodeUtils
 {
     public:
+        static QRgb tagColors [];
+
         static QList< QDANode * > * QDANodes ;
 
         static QDANode * retrieve( QString m_uniqueName );

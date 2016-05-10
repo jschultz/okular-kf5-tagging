@@ -217,6 +217,23 @@ class OKULARCORE_EXPORT Annotation
         virtual ~Annotation();
 
         /**
+         * Returns the head of the annotation. This is only meaningful for tag
+         * annotations, which may be spread over multiple pages.
+         */
+        virtual Annotation *head();
+
+        /**
+         * Returns the next annotatuib in a group. This is only meaningful for tag
+         * annotations, which may be spread over multiple pages.
+         */
+        virtual Annotation *next();
+
+        /**
+         * Returns the page of the annotation.
+         */
+        const Page * page() const;
+
+        /**
          * Sets the @p author of the annotation.
          */
         void setAuthor( const QString &author );
@@ -1720,13 +1737,14 @@ class OKULARCORE_EXPORT RichMediaAnnotation : public Annotation
 
 class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
 {
+    friend class TextTagAnnotationPrivate;
+
     public:
         /**
          * Creates a new text tagging.
          */
-        TextTagAnnotation();
-
         TextTagAnnotation( const Page * page, const TextReference * ref );
+        TextTagAnnotation( TextTagAnnotation * head, const Page * page, const TextReference * ref );
 
         /**
          * Creates a new text tagging from the xml @p description
@@ -1744,6 +1762,16 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          * Returns the sub type of the text tagging.
          */
         SubType subType() const;
+
+        /**
+         * Returns the head (start) of the tagging
+         */
+        virtual Annotation *head();
+
+        /**
+         * Returns the next tagging in a group.
+         */
+        virtual Annotation *next();
 
         /**
          * Assigns the node of the text tagging
@@ -1778,6 +1806,10 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
 private:
         Q_DECLARE_PRIVATE( TextTagAnnotation )
         Q_DISABLE_COPY( TextTagAnnotation )
+
+protected:
+        //  JS: A bit awkward but we need a table to lookup text tags by unique name during loading.
+        static QHash<QString, TextTagAnnotation *> tTagAnnotationTable;
 };
 
 class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation

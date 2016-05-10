@@ -1063,32 +1063,37 @@ void DocumentPrivate::performAddPageAnnotation( int page, Annotation * annotatio
     Okular::SaveInterface * iface = qobject_cast< Okular::SaveInterface * >( m_generator );
     AnnotationProxy *proxy = iface ? iface->annotationProxy() : 0;
 
-    // find out the page to attach annotation
-    Page * kp = m_pagesVector[ page ];
-    if ( !m_generator || !kp )
-        return;
-
     // the annotation belongs already to a page
     if ( annotation->d_ptr->m_page )
         return;
 
-    // add annotation to the page
-    kp->addAnnotation( annotation );
-
-    // tell the annotation proxy
-    if ( proxy && proxy->supports(AnnotationProxy::Addition)
-    //  But not if this is a tag annotation because proxies don't know about those
-    &&   annotation->subType() != Okular::Annotation::ATTag
-    &&   annotation->subType() != Okular::Annotation::ABTag )
-        proxy->notifyAddition( annotation, page );
-
-    // notify observers about the change
-    notifyAnnotationChanges( page );
-
-    if ( annotation->flags() & Annotation::ExternallyDrawn )
+    while ( annotation )
     {
-        // Redraw everything, including ExternallyDrawn annotations
-        refreshPixmaps( page );
+        // find out the page to attach annotation
+        Page * kp = m_pagesVector[ page ];
+        if ( !m_generator || !kp )
+            return;
+
+        // add annotation to the page
+        kp->addAnnotation( annotation );
+
+        // tell the annotation proxy
+        if ( proxy && proxy->supports(AnnotationProxy::Addition)
+        //  But not if this is a tag annotation because proxies don't know about those
+        &&   annotation->subType() != Okular::Annotation::ATTag
+        &&   annotation->subType() != Okular::Annotation::ABTag )
+            proxy->notifyAddition( annotation, page );
+
+        // notify observers about the change
+        notifyAnnotationChanges( page );
+
+        if ( annotation->flags() & Annotation::ExternallyDrawn )
+        {
+            // Redraw everything, including ExternallyDrawn annotations
+            refreshPixmaps( page );
+        }
+        annotation = annotation->next();
+        page++;
     }
 
     warnLimitedAnnotSupport();
@@ -1100,36 +1105,41 @@ void DocumentPrivate::performRemovePageAnnotation( int page, Annotation * annota
     AnnotationProxy *proxy = iface ? iface->annotationProxy() : 0;
     bool isExternallyDrawn;
 
-    // find out the page
-    Page * kp = m_pagesVector[ page ];
-    if ( !m_generator || !kp )
-        return;
-
     if ( annotation->flags() & Annotation::ExternallyDrawn )
         isExternallyDrawn = true;
     else
         isExternallyDrawn = false;
 
-    // try to remove the annotation
-    if ( m_parent->canRemovePageAnnotation( annotation ) )
+    while ( annotation )
     {
-        // tell the annotation proxy
-        if ( proxy && proxy->supports(AnnotationProxy::Removal)
-        //  But not if this is a tag annotation because proxies don't know about those
-        &&   annotation->subType() != Okular::Annotation::ATTag
-        &&   annotation->subType() != Okular::Annotation::ABTag )
-            proxy->notifyRemoval( annotation, page );
+    // find out the page
+        Page * kp = m_pagesVector[ page ];
+        if ( !m_generator || !kp )
+            return;
 
-        kp->removeAnnotation( annotation ); // Also destroys the object
-
-        // in case of success, notify observers about the change
-        notifyAnnotationChanges( page );
-
-        if ( isExternallyDrawn )
+        // try to remove the annotation
+        if ( m_parent->canRemovePageAnnotation( annotation ) )
         {
-            // Redraw everything, including ExternallyDrawn annotations
-            refreshPixmaps( page );
+            // tell the annotation proxy
+            if ( proxy && proxy->supports(AnnotationProxy::Removal)
+            //  But not if this is a tag annotation because proxies don't know about those
+            &&   annotation->subType() != Okular::Annotation::ATTag
+            &&   annotation->subType() != Okular::Annotation::ABTag )
+                proxy->notifyRemoval( annotation, page );
+
+            kp->removeAnnotation( annotation ); // Also destroys the object
+
+            // in case of success, notify observers about the change
+            notifyAnnotationChanges( page );
+
+            if ( isExternallyDrawn )
+            {
+                // Redraw everything, including ExternallyDrawn annotations
+                refreshPixmaps( page );
+            }
         }
+        annotation = annotation->next();
+        page++;
     }
 
     warnLimitedAnnotSupport();
