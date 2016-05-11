@@ -541,7 +541,7 @@ Annotation *Annotation::head()
     return this;
 }
 
-Annotation *Annotation::next()
+Annotation *Annotation::next() const
 {
     return 0;
 }
@@ -3113,9 +3113,6 @@ TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * r
 {
     Q_D( TextTagAnnotation );
 
-    if (! d->m_head )
-        d->m_head = this;
-
     d->m_ref = ref;
     d->m_textArea = page->TextReferenceArea( ref );
     NormalizedRect rect = d->m_textArea->first();
@@ -3144,14 +3141,11 @@ TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * pag
     tTagPIt->m_next = this;
 }
 
-TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
-    : Annotation( *new TextTagAnnotationPrivate(), node )
+void TextTagAnnotation::appendAnnotation()
 {
     Q_D( TextTagAnnotation );
 
-    if (! d->m_head )
-        d->m_head = this;
-    else
+    if ( d->m_head )
     {
         TextTagAnnotation * tTagIt = d->m_head;
         TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
@@ -3162,8 +3156,17 @@ TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
             tTagIt = tTagPIt->m_next;
             tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
         }
-        tTagPIt->m_next = this;
+        if ( tTagIt != this )
+            tTagPIt->m_next = this;
     }
+}
+
+TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
+    : Annotation( *new TextTagAnnotationPrivate(), node )
+{
+    Q_D( TextTagAnnotation );
+
+    this->appendAnnotation();
 
     //  Save this tag for future lookup
     tTagAnnotationTable[d->m_uniqueName] = this;
@@ -3180,10 +3183,10 @@ TextTagAnnotation::Annotation * TextTagAnnotation::head()
 {
     Q_D( const TextTagAnnotation );
 
-    return d->m_head;
+    return d->m_head ? d->m_head : this;
 }
 
-TextTagAnnotation::Annotation * TextTagAnnotation::next()
+TextTagAnnotation::Annotation * TextTagAnnotation::next() const
 {
     Q_D( const TextTagAnnotation );
 
@@ -3192,23 +3195,15 @@ TextTagAnnotation::Annotation * TextTagAnnotation::next()
 
 void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
 {
+    //  Save and restore the next annotation field.
+    TextTagAnnotation * nextAnn = static_cast<TextTagAnnotation *>( this->next() );
     Annotation::setAnnotationProperties( node );
 
     Q_D( TextTagAnnotation );
 
-    if ( d->m_head )
-    {
-        TextTagAnnotation * tTagIt = d->m_head;
-        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-        //  Second part of condition shouldn't ever happen, but including it will prevent looping
-        //  in case of data inconsistency.
-        while ( tTagPIt->m_next && tTagPIt->m_next != this )
-        {
-            tTagIt = tTagPIt->m_next;
-            tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-        }
-        tTagPIt->m_next = this;
-    }
+    d->m_next = nextAnn;
+
+    this->appendAnnotation();
 
     //  Since the TextTagAnnotationPrivate record has been recreated, we need to
     //  recalculate the text area fields.
@@ -3225,14 +3220,14 @@ void TextTagAnnotation::setNode( const QDANode *node )
 {
     Q_D( TextTagAnnotation );
 
-    d->m_node = node;
+    (d->m_head ? static_cast <TextTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node = node;
 }
 
 const QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
 
-    return d->m_node;
+    return (d->m_head ? static_cast <TextTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node;
 }
 
 const RegularAreaRect * TextTagAnnotation::transformedTextArea () const
@@ -3333,11 +3328,9 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         if ( e.hasAttribute( QStringLiteral("node") ) )
             m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
         if ( e.hasAttribute( QStringLiteral("head") ) )
-        {
             m_head = TextTagAnnotation::tTagAnnotationTable[ e.attribute( "head" ) ];
-        }
 
-        if (! m_node )
+        if (! m_node && ! m_head )
             m_node = new QDANode ();
 
         QDomNode taggingNode = e.firstChild();

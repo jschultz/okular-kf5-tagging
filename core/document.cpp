@@ -1165,7 +1165,15 @@ void DocumentPrivate::performModifyPageAnnotation( int page, Annotation * annota
     }
 
     // notify observers about the change
-    notifyAnnotationChanges( page );
+    Annotation * annIt = annotation;
+    int pageIt = page;
+    while ( annIt )
+    {
+        notifyAnnotationChanges( pageIt );
+        annIt = annIt->next();
+        pageIt++;
+    }
+
     if ( appearanceChanged && (annotation->flags() & Annotation::ExternallyDrawn) )
     {
         /* When an annotation is being moved, the generator will not render it.
@@ -1184,7 +1192,15 @@ void DocumentPrivate::performModifyPageAnnotation( int page, Annotation * annota
 
         // Redraw everything, including ExternallyDrawn annotations
         qCDebug(OkularCoreDebug) << "Refreshing Pixmaps";
-        refreshPixmaps( page );
+
+        Annotation * annIt = annotation;
+        int pageIt = page;
+        while ( annIt )
+        {
+            refreshPixmaps( pageIt );
+            annIt = annIt->next();
+            pageIt++;
+        }
     }
 
     // If the user is moving the annotation, don't steal the focus

@@ -226,7 +226,7 @@ class OKULARCORE_EXPORT Annotation
          * Returns the next annotatuib in a group. This is only meaningful for tag
          * annotations, which may be spread over multiple pages.
          */
-        virtual Annotation *next();
+        virtual Annotation *next() const;
 
         /**
          * Returns the page of the annotation.
@@ -1771,7 +1771,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Returns the next tagging in a group.
          */
-        virtual Annotation *next();
+        virtual Annotation *next() const;
 
         /**
          * Assigns the node of the text tagging
@@ -1806,6 +1806,8 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
 private:
         Q_DECLARE_PRIVATE( TextTagAnnotation )
         Q_DISABLE_COPY( TextTagAnnotation )
+
+        void appendAnnotation();
 
 protected:
         //  JS: A bit awkward but we need a table to lookup text tags by unique name during loading.

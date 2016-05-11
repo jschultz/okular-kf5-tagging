@@ -136,33 +136,15 @@ ModifyAnnotationPropertiesCommand::ModifyAnnotationPropertiesCommand( DocumentPr
 void ModifyAnnotationPropertiesCommand::undo()
 {
     moveViewportIfBoundingRectNotFullyVisible( m_annotation->boundingRectangle(), m_docPriv, m_pageNumber );
-    Annotation * annIt = m_annotation;
-    int pgIt = m_pageNumber;
-    while ( annIt )
-    {
-        //  Need to save the next annotation because it will be overwritten along with properties.
-        Annotation * nextAnn = annIt->next();
-        annIt->setAnnotationProperties( m_prevProperties );
-        m_docPriv->performModifyPageAnnotation( pgIt,  annIt, true );
-        annIt = nextAnn;
-        pgIt++;
-    }
+    m_annotation->setAnnotationProperties( m_prevProperties );
+    m_docPriv->performModifyPageAnnotation( m_pageNumber,  m_annotation, true );
 }
 
 void ModifyAnnotationPropertiesCommand::redo()
 {
     moveViewportIfBoundingRectNotFullyVisible( m_annotation->boundingRectangle(), m_docPriv, m_pageNumber );
-    Annotation * annIt = m_annotation;
-    int pgIt = m_pageNumber;
-    while ( annIt )
-    {
-        //  Need to save the next annotation because it will be overwritten along with properties.
-        Annotation * nextAnn = annIt->next();
-        annIt->setAnnotationProperties( m_newProperties );
-        m_docPriv->performModifyPageAnnotation( pgIt,  annIt, true );
-        annIt = nextAnn;
-        pgIt++;
-    }
+    m_annotation->setAnnotationProperties( m_newProperties );
+    m_docPriv->performModifyPageAnnotation( m_pageNumber,  m_annotation, true );
 }
 
 TranslateAnnotationCommand::TranslateAnnotationCommand( DocumentPrivate* docPriv,

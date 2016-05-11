@@ -921,16 +921,10 @@ void PageViewPrivate::createTextTagAnnotationsfromSelection(Okular::QDANode *nod
         {
             page = document->page( selpages.at( i ) );
             Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( head, page, page->reference( 0, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-            ann->setCreationDate( QDateTime::currentDateTime() );
-            ann->setAuthor( Okular::Settings::identityAuthor() );
-            ann->setNode (node);
             document->addPageAnnotation( page->number(), ann );
         }
         page = document->page( selpages.last() );
         Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( head, page, page->reference( page->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-        ann->setCreationDate( QDateTime::currentDateTime() );
-        ann->setAuthor( Okular::Settings::identityAuthor() );
-        ann->setNode (node);
         document->addPageAnnotation( page->number(), ann );
     }
 }
