@@ -546,6 +546,11 @@ Annotation *Annotation::next() const
     return 0;
 }
 
+const QDANode * Annotation::node() const
+{
+    return 0;
+}
+
 const Page * Annotation::page() const
 {
     Q_D( const Annotation );
@@ -3246,13 +3251,13 @@ QString TextTagAnnotation::text() const
 {
     Q_D( const TextTagAnnotation );
 
-    const TextTagAnnotation *tTagIt = d->m_head;
+    const TextTagAnnotation *tTagIt = d->m_head ? d->m_head : this;
     QString ret;
     while ( tTagIt )
     {
-	TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-	ret.append( tTagPIt->m_page->m_page->text( tTagPIt->m_transformedTextArea, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
-	tTagIt = tTagPIt->m_next;
+        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        ret.append( tTagPIt->m_page->m_page->text( tTagPIt->m_transformedTextArea, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
+        tTagIt = tTagPIt->m_next;
     }
     return ret;
 }

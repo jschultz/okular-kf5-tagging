@@ -229,6 +229,11 @@ class OKULARCORE_EXPORT Annotation
         virtual Annotation *next() const;
 
         /**
+         * Returns the node of the tagging
+         */
+        virtual const QDANode *node() const;
+
+        /**
          * Returns the page of the annotation.
          */
         const Page * page() const;
@@ -1781,7 +1786,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Returns the node of the tagging
          */
-        const QDANode *node() const;
+        virtual const QDANode *node() const;
 
         /**
          * Returns the area occupied by the tagging
@@ -1847,7 +1852,7 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Returns the node of the tagging
          */
-        const QDANode *node() const;
+        virtual const QDANode *node() const;
 
         /**
          * Stores the box tag annotation as xml in @p document under the given parent @p node.

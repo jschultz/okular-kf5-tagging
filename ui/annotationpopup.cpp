@@ -22,6 +22,7 @@
 #include "core/document.h"
 #include "core/page.h"
 #include "guiutils.h"
+#include "qdanodes.h"
 
 Q_DECLARE_METATYPE( AnnotationPopup::AnnotPagePair )
 
@@ -134,7 +135,15 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
     {
         foreach ( const AnnotPagePair& pair, mAnnots )
         {
-            menu.addSection( GuiUtils::captionForAnnotation( pair.annotation ) );
+            const Okular::QDANode *node = pair.annotation->node();
+            if ( node )
+            {
+                QPixmap pixmap(100,100);
+                pixmap.fill(pair.annotation->node()->color());
+                menu.addSection( pixmap, GuiUtils::captionForAnnotation( pair.annotation ) );
+            }
+            else
+                menu.addSection( GuiUtils::captionForAnnotation( pair.annotation ) );
 
             if ( pair.annotation->subType() == Okular::Annotation::ATTag
               || pair.annotation->subType() == Okular::Annotation::ABTag )
