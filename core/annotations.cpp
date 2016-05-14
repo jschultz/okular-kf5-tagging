@@ -3135,7 +3135,7 @@ TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * pag
     Q_D( TextTagAnnotation );
 
     d->m_head = head;
-    const TextTagAnnotation  *tTagIt = head;
+    TextTagAnnotation  *tTagIt = head;
     TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
 
     while ( tTagPIt->m_next )
