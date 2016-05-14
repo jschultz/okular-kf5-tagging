@@ -1742,13 +1742,17 @@ class OKULARCORE_EXPORT RichMediaAnnotation : public Annotation
 
 class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
 {
-    friend class TextTagAnnotationPrivate;
+//    friend class TextTagAnnotationPrivate;
 
     public:
         /**
          * Creates a new text tagging.
          */
         TextTagAnnotation( const Page * page, const TextReference * ref );
+
+        /**
+         * Creates a new text tagging that extends an existing text tagging to a new page
+         */
         TextTagAnnotation( TextTagAnnotation * head, const Page * page, const TextReference * ref );
 
         /**
@@ -1825,9 +1829,12 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Creates a new box tagging.
          */
-        BoxTagAnnotation( );
-
         BoxTagAnnotation( const NormalizedRect *rect );
+
+        /**
+         * Creates a new box tagging that extends an existing box tagging to a new page
+         */
+        BoxTagAnnotation( BoxTagAnnotation * head, const NormalizedRect *rect );
 
         /**
          * Creates a new box tagging from the xml @p description
@@ -1839,10 +1846,22 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          */
         ~BoxTagAnnotation();
 
+        virtual void setAnnotationProperties( const QDomNode& node );
+
         /**
          * Returns the sub type of the box tagging.
          */
         SubType subType() const;
+
+        /**
+         * Returns the head (start) of the tagging
+         */
+        virtual Annotation *head();
+
+        /**
+         * Returns the next tagging in a group.
+         */
+        virtual Annotation *next() const;
 
         /**
          * Assigns the node of the tagging
@@ -1867,6 +1886,13 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
 private:
         Q_DECLARE_PRIVATE( BoxTagAnnotation )
         Q_DISABLE_COPY( BoxTagAnnotation )
+
+        void appendAnnotation();
+
+protected:
+        //  JS: A bit awkward but we need a table to lookup text tags by unique name during loading.
+        static QHash<QString, BoxTagAnnotation *> bTagAnnotationTable;
+
 };
 
 }

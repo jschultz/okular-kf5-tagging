@@ -3102,7 +3102,7 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual AnnotationPrivate* getNewAnnotationPrivate();
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
-        TextTagAnnotation *m_head, *m_next;
+        TextTagAnnotation *m_head, *m_next;     //  Structures to link multi-page annotations
 
         const QDANode *m_node;
         const TextReference * m_ref;
@@ -3110,7 +3110,7 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         RegularAreaRect * m_transformedTextArea;
 };
 
-//  Static variable
+//  Static table of text tag annotations to help rebuild structures on file load.
 QHash<QString, TextTagAnnotation *> TextTagAnnotation::tTagAnnotationTable;
 
 TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * ref )
@@ -3134,16 +3134,19 @@ TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * pag
 {
     Q_D( TextTagAnnotation );
 
-    d->m_head = head;
-    TextTagAnnotation  *tTagIt = head;
-    TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-
-    while ( tTagPIt->m_next )
+    if ( head )
     {
-        tTagIt = tTagPIt->m_next;
-        tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        d->m_head = head;
+        TextTagAnnotation  *tTagIt = head;
+        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+
+        while ( tTagPIt->m_next )
+        {
+            tTagIt = tTagPIt->m_next;
+            tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+        }
+        tTagPIt->m_next = this;
     }
-    tTagPIt->m_next = this;
 }
 
 void TextTagAnnotation::appendAnnotation()
@@ -3265,6 +3268,7 @@ QString TextTagAnnotation::text() const
 void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 {
     Q_D( const TextTagAnnotation );
+
     // recurse to parent objects storing properties
     Annotation::store( node, document );
 
@@ -3385,28 +3389,20 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
         BoxTagAnnotationPrivate()
-            : AnnotationPrivate(), m_node( 0 )
+            : AnnotationPrivate(), m_head( 0 ), m_next( 0 ), m_node( 0 )
         {
         }
 
         virtual void setAnnotationProperties( const QDomNode& node );
         virtual AnnotationPrivate* getNewAnnotationPrivate();
 
+        BoxTagAnnotation *m_head, *m_next;      //  Structures to link multi-page annotations
+
         const QDANode *m_node;
 };
 
-/*
-  The default textIcon for text annotation is Note as the PDF Reference says
-*/
-BoxTagAnnotation::BoxTagAnnotation()
-    : Annotation( *new BoxTagAnnotationPrivate() )
-{
-}
-
-BoxTagAnnotation::BoxTagAnnotation( const QDomNode & node )
-    : Annotation( *new BoxTagAnnotationPrivate(), node )
-{
-}
+//  Static table of box tag annotations to help rebuild structures on file load.
+QHash<QString, BoxTagAnnotation *> BoxTagAnnotation::bTagAnnotationTable;
 
 BoxTagAnnotation::BoxTagAnnotation( const NormalizedRect *rect )
     : Annotation( *new BoxTagAnnotationPrivate() )
@@ -3415,20 +3411,103 @@ BoxTagAnnotation::BoxTagAnnotation( const NormalizedRect *rect )
     d->m_boundary = *rect;
 }
 
-BoxTagAnnotation::~BoxTagAnnotation()
-{
-}
-
-void BoxTagAnnotation::setNode ( QDANode *node )
+BoxTagAnnotation::BoxTagAnnotation( BoxTagAnnotation * head, const NormalizedRect *rect )
+    : BoxTagAnnotation( rect )
 {
     Q_D( BoxTagAnnotation );
-    d->m_node = node;
+
+    if ( head )
+    {
+        d->m_head = head;
+        BoxTagAnnotation  *tTagIt = head;
+        BoxTagAnnotationPrivate *tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
+
+        while ( tTagPIt->m_next )
+        {
+            tTagIt = tTagPIt->m_next;
+            tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
+        }
+        tTagPIt->m_next = this;
+    }
+}
+
+void BoxTagAnnotation::appendAnnotation()
+{
+    Q_D( BoxTagAnnotation );
+
+    if ( d->m_head )
+    {
+        BoxTagAnnotation * tTagIt = d->m_head;
+        BoxTagAnnotationPrivate *tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
+        //  Second part of condition shouldn't ever happen, but including it will prevent looping
+        //  in case of data inconsistency.
+        while ( tTagPIt->m_next && tTagPIt->m_next != this )
+        {
+            tTagIt = tTagPIt->m_next;
+            tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
+        }
+        if ( tTagIt != this )
+            tTagPIt->m_next = this;
+    }
+}
+
+BoxTagAnnotation::BoxTagAnnotation( const QDomNode & node )
+    : Annotation( *new BoxTagAnnotationPrivate(), node )
+{
+    Q_D( BoxTagAnnotation );
+
+    this->appendAnnotation();
+
+    //  Save this tag for future lookup
+    bTagAnnotationTable[d->m_uniqueName] = this;
+}
+
+BoxTagAnnotation::~BoxTagAnnotation()
+{
+    Q_D( BoxTagAnnotation );
+
+    bTagAnnotationTable[d->m_uniqueName] = 0;
+}
+
+BoxTagAnnotation::Annotation * BoxTagAnnotation::head()
+{
+    Q_D( const BoxTagAnnotation );
+
+    return d->m_head ? d->m_head : this;
+}
+
+BoxTagAnnotation::Annotation * BoxTagAnnotation::next() const
+{
+    Q_D( const BoxTagAnnotation );
+
+    return d->m_next;
+}
+
+void BoxTagAnnotation::setAnnotationProperties( const QDomNode& node )
+{
+    //  Save and restore the next annotation field.
+    BoxTagAnnotation * nextAnn = static_cast<BoxTagAnnotation *>( this->next() );
+    Annotation::setAnnotationProperties( node );
+
+    Q_D( BoxTagAnnotation );
+
+    d->m_next = nextAnn;
+
+    this->appendAnnotation();
+}
+
+void BoxTagAnnotation::setNode( QDANode *node )
+{
+    Q_D( BoxTagAnnotation );
+
+    (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node = node;
 }
 
 const QDANode * BoxTagAnnotation::node() const
 {
     Q_D( const BoxTagAnnotation );
-    return d->m_node;
+
+    return (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node;
 }
 
 Annotation::SubType BoxTagAnnotation::subType() const
@@ -3448,6 +3527,8 @@ void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
     node.appendChild( TTagElement );
 
     // store the optional attributes
+    if ( d->m_head )
+        TTagElement.setAttribute( QStringLiteral("head"), d->m_head->uniqueName() );
     if ( d->m_node )
         TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
 }
@@ -3504,8 +3585,10 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         // parse the attributes
         if ( e.hasAttribute( QStringLiteral("node") ) )
             m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+        if ( e.hasAttribute( QStringLiteral("head") ) )
+            m_head = BoxTagAnnotation::bTagAnnotationTable[ e.attribute( "head" ) ];
 
-        if (! m_node )
+        if (! m_node && ! m_head )
             m_node = new QDANode ();
 
         // loading complete

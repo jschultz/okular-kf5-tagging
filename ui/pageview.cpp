@@ -126,7 +126,8 @@ public:
     OkularTTS* tts();
 #endif
     QString selectedText() const;
-    void createTextTagAnnotationsfromSelection(Okular::QDANode *node) const;
+    void createTextTagAnnotationsfromSelection( Okular::QDANode *node ) const;
+    void createBoxTagAnnotationsfromSelection( QRect selectionRect, Okular::QDANode *node ) const;
 
     // the document, pageviewItems and the 'visible cache'
     PageView *q;
@@ -926,6 +927,38 @@ void PageViewPrivate::createTextTagAnnotationsfromSelection(Okular::QDANode *nod
         page = document->page( selpages.last() );
         Okular::TextTagAnnotation* ann = new Okular::TextTagAnnotation( head, page, page->reference( page->textSelection(), Okular::TextPage::CentralPixelTextAreaInclusionBehaviour ) );
         document->addPageAnnotation( page->number(), ann );
+    }
+}
+
+void PageViewPrivate::createBoxTagAnnotationsfromSelection( QRect selectionRect, Okular::QDANode *node) const
+{
+    Okular::BoxTagAnnotation *head = 0, *ann;
+
+    QVector< PageViewItem * >::const_iterator iIt = items.constBegin(), iEnd = items.constEnd();
+    for ( ; iIt < iEnd; ++iIt )
+    {
+        PageViewItem * item = *iIt;
+
+        Okular::Page * okularPage = (Okular::Page *) item->page();
+        QRect intersect = selectionRect & item->croppedGeometry();
+        if (! intersect.isNull( ) )
+        {
+            intersect.translate( -item->uncroppedGeometry().topLeft() );
+            Okular::NormalizedRect* tagRect = new Okular::NormalizedRect (intersect, item->uncroppedWidth(), item->uncroppedHeight() );
+            if ( ! head )
+            {
+                ann = new Okular::BoxTagAnnotation( tagRect );
+                head = ann;
+
+                ann->setCreationDate( QDateTime::currentDateTime() );
+                ann->setAuthor( Okular::Settings::identityAuthor() );
+                ann->setNode (node);
+            }
+            else
+                ann = new Okular::BoxTagAnnotation( head, tagRect );
+
+            document->addPageAnnotation( okularPage->number(), ann );
+        }
     }
 }
 
@@ -2872,26 +2905,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                     }
 
                     if (node)
-                    {
-                        QVector< PageViewItem * >::const_iterator iIt = d->items.constBegin(), iEnd = d->items.constEnd();
-                        for ( ; iIt < iEnd; ++iIt )
-                        {
-                            PageViewItem * item = *iIt;
-
-                            Okular::Page * okularPage = (Okular::Page *) item->page();
-                            QRect intersect = selectionRect & item->croppedGeometry();
-                            if (! intersect.isNull( ) )
-                            {
-                                intersect.translate( -item->uncroppedGeometry().topLeft() );
-                                Okular::NormalizedRect* tagRect = new Okular::NormalizedRect (intersect, item->uncroppedWidth(), item->uncroppedHeight() );
-                                Okular::BoxTagAnnotation* ann = new Okular::BoxTagAnnotation( tagRect );
-                                ann->setCreationDate( QDateTime::currentDateTime() );
-                                ann->setAuthor( Okular::Settings::identityAuthor() );
-                                ann->setNode (node);
-                                d->document->addPageAnnotation( okularPage->number(), ann );
-                            }
-                        }
-                    }
+                        d->createBoxTagAnnotationsfromSelection( selectionRect, node );
                 }
             }
             }
@@ -3152,7 +3166,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 }
 
                                 if (node)
-                                    d->createTextTagAnnotationsfromSelection(node);
+                                    d->createTextTagAnnotationsfromSelection( node );
                             }
                         }
                     }
