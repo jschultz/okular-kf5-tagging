@@ -237,6 +237,11 @@ AnnotWindow::~AnnotWindow()
     delete m_latexRenderer;
 }
 
+int AnnotWindow::page() const
+{
+    return m_page;
+}
+
 void AnnotWindow::reloadInfo()
 {
     const QColor newcolor = m_annot->style().color().isValid() ? m_annot->style().color() : Qt::yellow;

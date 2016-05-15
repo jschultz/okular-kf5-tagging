@@ -1165,18 +1165,16 @@ void DocumentPrivate::performModifyPageAnnotation( int page, Annotation * annota
     }
 
     // notify observers about the change
-    notifyAnnotationChanges( page );
+//     notifyAnnotationChanges( page );
 
-//  JS: While notifying annotation change on each page of the annotation, doing so
-//      produces multiple freeing of AnnotWindow object.
-//     Annotation * annIt = annotation;
-//     int pageIt = page;
-//     while ( annIt )
-//     {
-//         notifyAnnotationChanges( pageIt );
-//         annIt = annIt->next();
-//         pageIt++;
-//     }
+    Annotation * annIt = annotation;
+    int pageIt = page;
+    while ( annIt )
+    {
+        notifyAnnotationChanges( pageIt );
+        annIt = annIt->next();
+        pageIt++;
+    }
 
     if ( appearanceChanged && (annotation->flags() & Annotation::ExternallyDrawn) )
     {

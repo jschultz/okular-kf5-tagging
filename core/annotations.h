@@ -246,7 +246,7 @@ class OKULARCORE_EXPORT Annotation
         /**
          * Returns the author of the annotation.
          */
-        QString author() const;
+        virtual QString author() const;
 
         /**
          * Sets the @p contents of the annotation.
@@ -256,7 +256,7 @@ class OKULARCORE_EXPORT Annotation
         /**
          * Returns the contents of the annotation.
          */
-        QString contents() const;
+        virtual QString contents() const;
 
         /**
          * Sets the unique @p name of the annotation.
@@ -278,7 +278,7 @@ class OKULARCORE_EXPORT Annotation
         /**
          * Returns the last modification date of the annotation.
          */
-        QDateTime modificationDate() const;
+        virtual QDateTime modificationDate() const;
 
         /**
          * Sets the creation @p date of the annotation.
@@ -290,7 +290,7 @@ class OKULARCORE_EXPORT Annotation
         /**
          * Returns the creation date of the annotation.
          */
-        QDateTime creationDate() const;
+        virtual QDateTime creationDate() const;
 
         /**
          * Sets the @p flags of the annotation.
@@ -302,7 +302,7 @@ class OKULARCORE_EXPORT Annotation
          * Returns the flags of the annotation.
          * @see @ref Flag
          */
-        int flags() const;
+        virtual int flags() const;
 
         /**
          * Sets the bounding @p rectangle of the annotation.
@@ -1793,6 +1793,32 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         virtual const QDANode *node() const;
 
         /**
+         * Returns the author of the annotation.
+         */
+        virtual QString author() const;
+
+        /**
+         * Returns the contents of the annotation.
+         */
+        virtual QString contents() const;
+
+        /**
+         * Returns the last modification date of the annotation.
+         */
+        virtual QDateTime modificationDate() const;
+
+        /**
+         * Returns the creation date of the annotation.
+         */
+        virtual QDateTime creationDate() const;
+
+        /**
+         * Returns the flags of the annotation.
+         * @see @ref Flag
+         */
+        virtual int flags() const;
+
+        /**
          * Returns the area occupied by the tagging
          */
         const RegularAreaRect * transformedTextArea () const;
@@ -1864,14 +1890,40 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         virtual Annotation *next() const;
 
         /**
-         * Assigns the node of the tagging
+         * Assigns the node of the box tagging
          */
-        void setNode ( QDANode *node );
+        void setNode ( const QDANode *node );
 
         /**
          * Returns the node of the tagging
          */
         virtual const QDANode *node() const;
+
+        /**
+         * Returns the author of the annotation.
+         */
+        virtual QString author() const;
+
+        /**
+         * Returns the contents of the annotation.
+         */
+        virtual QString contents() const;
+
+        /**
+         * Returns the last modification date of the annotation.
+         */
+        virtual QDateTime modificationDate() const;
+
+        /**
+         * Returns the creation date of the annotation.
+         */
+        virtual QDateTime creationDate() const;
+
+        /**
+         * Returns the flags of the annotation.
+         * @see @ref Flag
+         */
+        virtual int flags() const;
 
         /**
          * Stores the box tag annotation as xml in @p document under the given parent @p node.

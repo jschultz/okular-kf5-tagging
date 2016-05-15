@@ -3224,18 +3224,50 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     d->m_transformedTextArea->transform( d->m_page->rotationMatrix() );
 }
 
+#define head_d (d->m_head ? static_cast <TextTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)
+
 void TextTagAnnotation::setNode( const QDANode *node )
 {
     Q_D( TextTagAnnotation );
 
-    (d->m_head ? static_cast <TextTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node = node;
+    head_d->m_node = node;
 }
 
 const QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
 
-    return (d->m_head ? static_cast <TextTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node;
+    return d->m_node ? d->m_node : head_d->m_node;
+}
+
+QString TextTagAnnotation::author() const
+{
+    Q_D( const TextTagAnnotation );
+    return !d->m_author.isNull() ? d->m_author : head_d->m_author;
+}
+
+QString TextTagAnnotation::contents() const
+{
+    Q_D( const TextTagAnnotation );
+    return !d->m_contents.isNull() ? d->m_contents : head_d->m_contents;
+}
+
+QDateTime TextTagAnnotation::modificationDate() const
+{
+    Q_D( const TextTagAnnotation );
+    return !d->m_modifyDate.isNull() ? d->m_modifyDate : head_d->m_modifyDate;
+}
+
+QDateTime TextTagAnnotation::creationDate() const
+{
+    Q_D( const TextTagAnnotation );
+    return !d->m_creationDate.isNull() ? d->m_creationDate : head_d->m_creationDate;
+}
+
+int TextTagAnnotation::flags() const
+{
+    Q_D( const TextTagAnnotation );
+    return head_d->m_flags;
 }
 
 const RegularAreaRect * TextTagAnnotation::transformedTextArea () const
@@ -3496,18 +3528,51 @@ void BoxTagAnnotation::setAnnotationProperties( const QDomNode& node )
     this->appendAnnotation();
 }
 
-void BoxTagAnnotation::setNode( QDANode *node )
+#undef head_d
+#define head_d (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)
+
+void BoxTagAnnotation::setNode( const QDANode *node )
 {
     Q_D( BoxTagAnnotation );
 
-    (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node = node;
+    head_d->m_node = node;
 }
 
 const QDANode * BoxTagAnnotation::node() const
 {
     Q_D( const BoxTagAnnotation );
 
-    return (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)->m_node;
+    return d->m_node ? d->m_node : head_d->m_node;
+}
+
+QString BoxTagAnnotation::author() const
+{
+    Q_D( const BoxTagAnnotation );
+    return !d->m_author.isNull() ? d->m_author : head_d->m_author;
+}
+
+QString BoxTagAnnotation::contents() const
+{
+    Q_D( const BoxTagAnnotation );
+    return !d->m_contents.isNull() ? d->m_contents : head_d->m_contents;
+}
+
+QDateTime BoxTagAnnotation::modificationDate() const
+{
+    Q_D( const BoxTagAnnotation );
+    return !d->m_modifyDate.isNull() ? d->m_modifyDate : head_d->m_modifyDate;
+}
+
+QDateTime BoxTagAnnotation::creationDate() const
+{
+    Q_D( const BoxTagAnnotation );
+    return !d->m_creationDate.isNull() ? d->m_creationDate : head_d->m_creationDate;
+}
+
+int BoxTagAnnotation::flags() const
+{
+    Q_D( const BoxTagAnnotation );
+    return head_d->m_flags;
 }
 
 Annotation::SubType BoxTagAnnotation::subType() const

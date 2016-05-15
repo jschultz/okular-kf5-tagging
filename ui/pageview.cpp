@@ -1346,11 +1346,12 @@ void PageView::notifyPageChanged( int pageNumber, int changedFlags )
 
     if ( changedFlags & DocumentObserver::Annotations )
     {
-        const QLinkedList< Okular::Annotation * > annots = d->document->page( pageNumber )->annotations();
-        const QLinkedList< Okular::Annotation * >::ConstIterator annItEnd = annots.end();
         QHash< Okular::Annotation*, AnnotWindow * >::Iterator it = d->m_annowindows.begin();
         for ( ; it != d->m_annowindows.end(); )
         {
+            const QLinkedList< Okular::Annotation * > annots = d->document->page( (*it)->page() )->annotations();
+            const QLinkedList< Okular::Annotation * >::ConstIterator annItEnd = annots.end();
+
             QLinkedList< Okular::Annotation * >::ConstIterator annIt = qFind( annots, it.key() );
             if ( annIt != annItEnd )
             {

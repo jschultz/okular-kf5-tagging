@@ -34,6 +34,10 @@ class AnnotWindow : public QFrame
         AnnotWindow( QWidget * parent, Okular::Annotation * annot, Okular::Document * document, int page );
         ~AnnotWindow();
 
+        // JS Added page() function so that PageView::notifyPageChanged can handle annotations that
+        //    cover more than a single page.
+        int page() const;
+
         void reloadInfo();
 
     private:
