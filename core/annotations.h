@@ -52,6 +52,9 @@ class RichMediaAnnotationPrivate;
 class TextTagAnnotationPrivate;
 class BoxTagAnnotationPrivate;
 
+//  Forward class definition of QDANode - is this the right place for it?
+class QDANode;
+
 /**
  * @short Helper class for (recursive) annotation retrieval/storage.
  */
@@ -679,6 +682,12 @@ class OKULARCORE_EXPORT Annotation
          * Stores the annotation as xml in @p document under the given parent @p node.
          */
         virtual void store( QDomNode & node, QDomDocument & document ) const;
+
+        /**
+         * Stores the absolute annotation (ie relative to the document not the page). Only
+         * needed for tag annotations.
+         */
+        virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
 
         /**
          * Retrieve the QDomNode representing this annotation's properties
@@ -1785,7 +1794,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Assigns the node of the text tagging
          */
-        void setNode ( const QDANode *node );
+        void setNode ( QDANode *node );
 
         /**
          * Returns the node of the tagging
@@ -1832,6 +1841,12 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          * Stores the text tag annotation as xml in @p document under the given parent @p node.
          */
         void store( QDomNode &node, QDomDocument &document ) const;
+
+        /**
+         * Stores the absolute annotation (ie relative to the document not the page). Only
+         * needed for tag annotations.
+         */
+        virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
 
         /**
          * Returns the text content of the text tag annotation.
@@ -1892,7 +1907,7 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Assigns the node of the box tagging
          */
-        void setNode ( const QDANode *node );
+        void setNode ( QDANode *node );
 
         /**
          * Returns the node of the tagging
@@ -1929,6 +1944,12 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          * Stores the box tag annotation as xml in @p document under the given parent @p node.
          */
         void store( QDomNode &node, QDomDocument &document ) const;
+
+        /**
+         * Stores the absolute annotation (ie relative to the document not the page). Only
+         * needed for tag annotations.
+         */
+        //virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
 
         /**
          * Returns the box tag annotation as a pixmap.

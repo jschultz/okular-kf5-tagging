@@ -230,6 +230,14 @@ bool Page::hasTextPage() const
     return d->m_text != 0;
 }
 
+uint Page::offset() const
+{
+    if (! d->m_text )
+        d->m_doc->m_parent->requestTextPage( d->m_page->number() );
+
+    return d->m_text->offset();
+}
+
 RegularAreaRect * Page::wordAt( const NormalizedPoint &p, QString *word ) const
 {
     if ( d->m_text )

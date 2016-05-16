@@ -18,6 +18,9 @@
 #include <QtXml/QDomElement>
 
 #include "okularcore_export.h"
+#include "annotations.h"
+
+//class Annotation;
 
 namespace Okular {
 
@@ -32,7 +35,7 @@ class OKULARCORE_EXPORT QDANodeUtils
     public:
         static QRgb tagColors [];
 
-        static QList< QDANode * > * QDANodes ;
+        static QList< QDANode * > QDANodes ;
 
         static QDANode * retrieve( QString m_uniqueName );
 
@@ -68,6 +71,9 @@ class OKULARCORE_EXPORT QDANode
         void setModificationDate( QDateTime modificationDate );
         QDateTime modificationDate() const;
 
+        void addAnnotation( Annotation *ann );
+        void removeAnnotation( Annotation *ann );
+
     protected:
         QString m_uniqueName;
         QString m_name;
@@ -75,6 +81,8 @@ class OKULARCORE_EXPORT QDANode
         QString m_author;
         QDateTime m_creationDate;
         QDateTime m_modifyDate;
+
+        QList<Annotation *> m_annotations;
 };
 
 }

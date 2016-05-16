@@ -203,6 +203,11 @@ class OKULARCORE_EXPORT TextPage
         QString text( const RegularAreaRect * rect, TextAreaInclusionBehaviour b ) const;
 
         /**
+         * Offset function - returns the character offset of the page relative to the document.
+         */
+        uint offset();
+
+        /**
          * Text reference function.
          */
         Okular::TextReference* reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const;

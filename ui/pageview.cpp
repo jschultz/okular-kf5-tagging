@@ -2807,16 +2807,13 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
 
             menu.addSection ( i18n( "Box Tag" ) );
             QList< QAction * > * tagSelections = new QList< QAction * >();
-            if (Okular::QDANodeUtils::QDANodes)
+            QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
+            for ( ; nIt != nEnd; ++nIt )
             {
-                QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
-                for ( ; nIt != nEnd; ++nIt )
-                {
-                    QPixmap pixmap(100,100);
-                    pixmap.fill((*nIt)->color());
-                    QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
-                    tagSelections->append( tagSelection );
-                }
+                QPixmap pixmap(100,100);
+                pixmap.fill((*nIt)->color());
+                QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
+                tagSelections->append( tagSelection );
             }
             QAction * newNode = menu.addAction ( QIcon::fromTheme(QStringLiteral("new")), i18n ("New") );
 
@@ -2893,7 +2890,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                     else
                     {
                         QList< QAction * >::const_iterator aIt = tagSelections->constBegin(), aEnd = tagSelections->constEnd();
-                        QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin();
+                        QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin();
                         for ( ; aIt != aEnd; ++aIt )
                         {
                             if ( choice == *aIt )
@@ -3115,16 +3112,13 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
 
                         menu.addSection ( i18n( "Text Tag" ) );
                         QList< QAction * > * tagSelections = new QList< QAction * >();
-                        if (Okular::QDANodeUtils::QDANodes)
+                        QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
+                        for ( ; nIt != nEnd; ++nIt )
                         {
-                            QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
-                            for ( ; nIt != nEnd; ++nIt )
-                            {
-                                QPixmap pixmap(100,100);
-                                pixmap.fill((*nIt)->color());
-                                QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
-                                tagSelections->append( tagSelection );
-                            }
+                            QPixmap pixmap(100,100);
+                            pixmap.fill((*nIt)->color());
+                            QAction * tagSelection = menu.addAction ( QIcon(pixmap), (*nIt)->name() );
+                            tagSelections->append( tagSelection );
                         }
                         QAction * newNode = menu.addAction ( QIcon("new"), i18n ("New") );
 
@@ -3154,7 +3148,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 else
                                 {
                                     QList< QAction * >::const_iterator aIt = tagSelections->constBegin(), aEnd = tagSelections->constEnd();
-                                    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin();
+                                    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin();
                                     for ( ; aIt != aEnd; ++aIt )
                                     {
                                         if ( choice == *aIt )

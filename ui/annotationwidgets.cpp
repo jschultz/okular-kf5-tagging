@@ -801,7 +801,7 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     tmplabel->setBuddy( m_QDANode );
     nodelay->addWidget( m_QDANode );
 
-    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
+    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
     int i = 0;
     for ( ; nIt != nEnd; ++nIt )
     {
@@ -828,7 +828,7 @@ void TextTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes->at( m_QDANode->currentIndex() );
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
     QString nodeName = m_QDANode->currentText();
     m_tTagAnn->setNode( node );
     node->setName( nodeName );
@@ -857,7 +857,7 @@ QWidget * BoxTagAnnotationWidget::createExtraWidget()
     tmplabel->setBuddy( m_QDANode );
     nodelay->addWidget( m_QDANode );
 
-    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes->constBegin(), nEnd = Okular::QDANodeUtils::QDANodes->constEnd();
+    QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
     int i = 0;
     for ( ; nIt != nEnd; ++nIt )
     {
@@ -884,7 +884,7 @@ void BoxTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes->at( m_QDANode->currentIndex() );
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
     QString nodeName = m_QDANode->currentText();
     m_tTagAnn->setNode( node );
     node->setName( nodeName );

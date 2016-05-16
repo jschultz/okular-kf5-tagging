@@ -150,6 +150,11 @@ class OKULARCORE_EXPORT Page
         bool hasTextPage() const;
 
         /**
+         * Returns the text offset of the page relative to the document.
+         */
+        uint offset() const;
+
+        /**
          * Returns whether the page has an object rect which includes the point (@p x, @p y)
          * at scale (@p xScale, @p yScale).
          */

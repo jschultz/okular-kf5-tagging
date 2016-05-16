@@ -12,6 +12,7 @@
 // qt/kde includes
 #include <QtCore/QUuid>
 #include <QtGui/QColor>
+#include <QtCore/QDebug>
 
 using namespace Okular;
 
@@ -61,14 +62,11 @@ QRgb QDANodeUtils::tagColors [] = {
         0xFF252F99, 0xFF00CCFF, 0xFF674E60, 0xFFFC009C, 0xFF92896B
 };
 
-QList< QDANode * > * QDANodeUtils::QDANodes = 0;
+QList< QDANode * > QDANodeUtils::QDANodes = QList< QDANode * > ();
 
 QDANode * QDANodeUtils::retrieve( QString m_uniqueName )
 {
-    if (! QDANodes )
-        return 0;
-
-    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
+    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes.constBegin(), nEnd = QDANodeUtils::QDANodes.constEnd();
     for ( ; nIt != nEnd; ++nIt )
     {
         if ( (*nIt)->uniqueName() == m_uniqueName )
@@ -79,10 +77,7 @@ QDANode * QDANodeUtils::retrieve( QString m_uniqueName )
 
 void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
 {
-    if (! QDANodes )
-        return;
-
-    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes->constBegin(), nEnd = QDANodeUtils::QDANodes->constEnd();
+    QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes.constBegin(), nEnd = QDANodeUtils::QDANodes.constEnd();
     for ( ; nIt != nEnd; ++nIt )
     {
         (*nIt)->store( QDAElement, doc );
@@ -153,24 +148,18 @@ QDANode::QDANode()
 {
     QString uniqueName = "okular-" + QUuid::createUuid().toString();
 
-    if ( !QDANodeUtils::QDANodes )
-        QDANodeUtils::QDANodes = new QList< QDANode * >();
-
     m_uniqueName = uniqueName;
-    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes->length() ];
+    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
 
-    QDANodeUtils::QDANodes-> append(this);
+    QDANodeUtils::QDANodes.append(this);
 }
 
 QDANode::QDANode( QString uniqueName )
 {
-    if ( !QDANodeUtils::QDANodes )
-        QDANodeUtils::QDANodes = new QList< QDANode * >();
-
     m_uniqueName = uniqueName;
-    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes->length() ];
+    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
 
-    QDANodeUtils::QDANodes-> append(this);
+    QDANodeUtils::QDANodes.append(this);
 }
 
 QDANode::~QDANode()
@@ -192,6 +181,11 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
         e.setAttribute( QStringLiteral("modifyDate"), this->m_modifyDate.toString(Qt::ISODate) );
     if ( this->m_creationDate.isValid() )
         e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
+
+    QList< Annotation * >::const_iterator annIt = m_annotations.constBegin(), annEnd = m_annotations.constEnd();
+    for ( ; annIt != annEnd; ++annIt )
+        (*annIt)->storeAbsolute( e, document );
+
 }
 
 QString QDANode::uniqueName() const
@@ -247,6 +241,18 @@ void QDANode::setModificationDate( QDateTime modificationDate )
 QDateTime QDANode::modificationDate() const
 {
     return m_modifyDate;
+}
+
+void QDANode::addAnnotation( Annotation *ann )
+{
+    qDebug() << "addAnnotation: " << ann;
+    m_annotations.append( ann );
+}
+
+void QDANode::removeAnnotation( Annotation *ann )
+{
+    qDebug() << "removeAnnotation: " << ann;
+    m_annotations.removeAll( ann );
 }
 
 //END QDANode implementation

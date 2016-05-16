@@ -17,6 +17,7 @@
 #include "misc.h"
 #include "page.h"
 #include "page_p.h"
+#include "document_p.h"
 
 #include <cstring>
 
@@ -232,7 +233,7 @@ uint TextReference::length() const
 }
 
 TextPagePrivate::TextPagePrivate()
-    : m_page( 0 )
+    : m_page( 0 ), m_offset( -1 )
 {
 }
 
@@ -734,6 +735,9 @@ RegularAreaRect *TextPage::TextReferenceArea ( const TextReference *ref ) const
 {
     RegularAreaRect * ret= new RegularAreaRect;
 
+    if (! ref)
+        return ret; //  Empty area
+
     uint ref_offset = ref->offset();
     uint ref_length = ref->length();
 
@@ -759,10 +763,9 @@ RegularAreaRect *TextPage::TextReferenceArea ( const TextReference *ref ) const
             entity_len = str.length();
         }
         ret->appendShape( (*it)->area, MergeRight );
-        return ret;
     }
-    else
-        return 0;
+
+    return ret;
 }
 
 RegularAreaRect* TextPage::findText( int searchID, const QString &query, SearchDirection direct,
@@ -1158,6 +1161,24 @@ QString TextPage::text(const RegularAreaRect *area, TextAreaInclusionBehaviour b
             ret += (*it)->text();
     }
     return ret;
+}
+
+uint TextPage::offset()
+{
+    if ( d->m_offset == -1 )
+    {
+        Document *doc = d->m_page->m_doc->m_parent;
+        uint thisPageNum = d->m_page->m_page->number();
+        d->m_offset = 0;
+        for ( uint pageIt = 0; pageIt < thisPageNum; ++pageIt )
+        {
+            const Page *page = doc->page( pageIt );
+            if (! page->hasTextPage() )
+                doc->requestTextPage( pageIt );
+            d->m_offset += page->text().length();
+        }
+    }
+    return static_cast<uint>( d->m_offset );
 }
 
 Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const
