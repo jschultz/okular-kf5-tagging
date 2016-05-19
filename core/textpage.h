@@ -91,34 +91,10 @@ class OKULARCORE_EXPORT TextEntity
 class OKULARCORE_EXPORT TextReference
 {
     public:
-        typedef QList<TextReference*> List;
+        bool isNull() const;
 
-        /**
-         * Creates a new text entity with the given @p offset and the
-         * given @p length.
-         */
-        TextReference( uint offset, uint length );
-
-        /**
-         * Destroys the text entity.
-         */
-        ~TextReference();
-
-        /**
-         * Returns the offset of the first character.
-         */
-        uint offset() const;
-
-        /**
-         * Returns the length of the text ching.
-         */
-        uint length() const;
-
-    private:
-        uint m_offset;
-        uint m_length;
-
-        Q_DISABLE_COPY( TextReference )
+        uint offset;
+        uint length;
 };
 
 /**
@@ -210,7 +186,7 @@ class OKULARCORE_EXPORT TextPage
         /**
          * Text reference function.
          */
-        Okular::TextReference* reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const;
+        Okular::TextReference reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const;
 
         /**
          * Text entity extraction function. Similar to text() but returns
@@ -235,7 +211,7 @@ class OKULARCORE_EXPORT TextPage
         /**
          * Returns the area defined by the list of text references.
          */
-        RegularAreaRect *TextReferenceArea ( const TextReference *ref ) const;
+        RegularAreaRect *TextReferenceArea ( TextReference ref ) const;
 
     private:
         TextPagePrivate* const d;

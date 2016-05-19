@@ -213,23 +213,9 @@ NormalizedRect TextEntity::transformedArea(const QTransform &matrix) const
     return transformed_area;
 }
 
-TextReference::TextReference( uint offset, uint length )
-    : m_offset( offset ), m_length( length )
+bool TextReference::isNull() const
 {
-}
-
-TextReference::~TextReference()
-{
-}
-
-uint TextReference::offset() const
-{
-    return m_offset;
-}
-
-uint TextReference::length() const
-{
-    return m_length;
+    return ( offset == 0 && length == 0 );
 }
 
 TextPagePrivate::TextPagePrivate()
@@ -731,15 +717,15 @@ RegularAreaRect * TextPage::textArea ( TextSelection * sel) const
 }
 
 
-RegularAreaRect *TextPage::TextReferenceArea ( const TextReference *ref ) const
+RegularAreaRect *TextPage::TextReferenceArea ( const TextReference ref ) const
 {
     RegularAreaRect * ret= new RegularAreaRect;
 
-    if (! ref)
+    if ( ref.isNull() )
         return ret; //  Empty area
 
-    uint ref_offset = ref->offset();
-    uint ref_length = ref->length();
+    uint ref_offset = ref.offset;
+    uint ref_length = ref.length;
 
     TextList::ConstIterator it = d->m_words.constBegin(), end = d->m_words.constEnd();
     int entity_offset = 0;
@@ -1181,10 +1167,10 @@ uint TextPage::offset()
     return static_cast<uint>( d->m_offset );
 }
 
-Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const
+Okular::TextReference TextPage::reference(const RegularAreaRect *area, TextAreaInclusionBehaviour b) const
 {
     if ( area && area->isNull() )
-        return 0;
+        return { 0, 0 };
 
     uint ref_offset = 0, ref_length = 0;
     TextList::ConstIterator it = d->m_words.constBegin(), itEnd = d->m_words.constEnd();
@@ -1228,7 +1214,7 @@ Okular::TextReference* TextPage::reference(const RegularAreaRect *area, TextArea
             ref_length += len;
         }
     }
-    return new Okular::TextReference ( ref_offset, ref_length );
+    return { ref_offset, ref_length };
 }
 
 static bool compareTinyTextEntityX(const WordWithCharacters &first, const WordWithCharacters &second)

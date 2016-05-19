@@ -67,6 +67,7 @@ class OKULARCORE_EXPORT AnnotationUtils
          * Returns a pointer to the complete annotation or 0 if element is invalid.
          */
         static Annotation * createAnnotation( const QDomElement & element );
+        static Annotation * createAnnotation( Document *doc, const QDomElement & element );
 
         /**
          * Saves the @p annotation as a child of @p element taking
@@ -232,14 +233,25 @@ class OKULARCORE_EXPORT Annotation
         virtual Annotation *next() const;
 
         /**
-         * Returns the node of the tagging
+         * Sets the previous node of the tagging, does nothing for other annotiation
+         * types.
          */
-        virtual const QDANode *node() const;
+        virtual void setPrevNode ( QDANode *node );
 
         /**
-         * Returns the page of the annotation.
+         * Returns the node of the tagging
          */
-        const Page * page() const;
+        virtual QDANode *node() const;
+
+//         /**
+//          * Returns the page of the annotation.
+//          */
+//         const Page * page() const;
+
+        /**
+         * Returns the page of the tag annotation. Unimplemented for other annotation types.
+         */
+        virtual uint pageNum() const;
 
         /**
          * Sets the @p author of the annotation.
@@ -440,6 +452,7 @@ class OKULARCORE_EXPORT Annotation
                 /**
                  * Returns the line effect of the style.
                  */
+
                 LineEffect lineEffect() const;
 
                 /**
@@ -460,12 +473,12 @@ class OKULARCORE_EXPORT Annotation
         /**
          * Returns a reference to the style object of the annotation.
          */
-        Style & style();
+        virtual Style & style();
 
         /**
          * Returns a const reference to the style object of the annotation.
          */
-        const Style & style() const;
+        virtual const Style & style() const;
 
         /**
          * The Window class contains all information about the popup window
@@ -684,12 +697,6 @@ class OKULARCORE_EXPORT Annotation
         virtual void store( QDomNode & node, QDomDocument & document ) const;
 
         /**
-         * Stores the absolute annotation (ie relative to the document not the page). Only
-         * needed for tag annotations.
-         */
-        virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
-
-        /**
          * Retrieve the QDomNode representing this annotation's properties
 
          * @since 0.17 (KDE 4.11)
@@ -707,6 +714,9 @@ class OKULARCORE_EXPORT Annotation
         /// @cond PRIVATE
         Annotation( AnnotationPrivate &dd );
         Annotation( AnnotationPrivate &dd, const QDomNode &description );
+
+        void storeAttributes( QDomElement & baseElement ) const;
+
         Q_DECLARE_PRIVATE( Annotation )
         AnnotationPrivate *d_ptr;
         /// @endcond
@@ -1757,17 +1767,18 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Creates a new text tagging.
          */
-        TextTagAnnotation( const Page * page, const TextReference * ref );
+        TextTagAnnotation( const Page * page, TextReference ref );
 
         /**
          * Creates a new text tagging that extends an existing text tagging to a new page
          */
-        TextTagAnnotation( TextTagAnnotation * head, const Page * page, const TextReference * ref );
+        TextTagAnnotation( TextTagAnnotation * head, const Page * page, TextReference ref );
 
         /**
          * Creates a new text tagging from the xml @p description
          */
         TextTagAnnotation( const QDomNode &description );
+        TextTagAnnotation( Document *doc, const QDomNode &description );
 
         /**
          * Destroys the text tagging.
@@ -1780,6 +1791,21 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          * Returns the sub type of the text tagging.
          */
         SubType subType() const;
+
+        /**
+         * Returns the page of the tag annotation. Unimplemented for other annotation types.
+         */
+        virtual uint pageNum() const;
+
+        /**
+         * Returns a reference to the style object of the annotation.
+         */
+        virtual Style & style();
+
+        /**
+         * Returns a const reference to the style object of the annotation.
+         */
+        virtual const Style & style() const;
 
         /**
          * Returns the head (start) of the tagging
@@ -1797,9 +1823,14 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         void setNode ( QDANode *node );
 
         /**
+         * Sets the previous node of the text tagging
+         */
+        virtual void setPrevNode ( QDANode *node );
+
+        /**
          * Returns the node of the tagging
          */
-        virtual const QDANode *node() const;
+        virtual QDANode *node() const;
 
         /**
          * Returns the author of the annotation.
@@ -1835,7 +1866,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Returns reference (offset, length) of the text tagging in the document
          */
-        const TextReference * reference() const;
+        TextReference reference() const;
 
         /**
          * Stores the text tag annotation as xml in @p document under the given parent @p node.
@@ -1843,25 +1874,13 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         void store( QDomNode &node, QDomDocument &document ) const;
 
         /**
-         * Stores the absolute annotation (ie relative to the document not the page). Only
-         * needed for tag annotations.
-         */
-        virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
-
-        /**
          * Returns the text content of the text tag annotation.
          */
         QString text() const;
 
-private:
+    private:
         Q_DECLARE_PRIVATE( TextTagAnnotation )
         Q_DISABLE_COPY( TextTagAnnotation )
-
-        void appendAnnotation();
-
-protected:
-        //  JS: A bit awkward but we need a table to lookup text tags by unique name during loading.
-        static QHash<QString, TextTagAnnotation *> tTagAnnotationTable;
 };
 
 class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
@@ -1910,9 +1929,14 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         void setNode ( QDANode *node );
 
         /**
+         * Sets the previous node of the box tagging
+         */
+//        virtual void setPrevNode ( QDANode *node );
+
+        /**
          * Returns the node of the tagging
          */
-        virtual const QDANode *node() const;
+        virtual QDANode *node() const;
 
         /**
          * Returns the author of the annotation.
@@ -1944,12 +1968,6 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          * Stores the box tag annotation as xml in @p document under the given parent @p node.
          */
         void store( QDomNode &node, QDomDocument &document ) const;
-
-        /**
-         * Stores the absolute annotation (ie relative to the document not the page). Only
-         * needed for tag annotations.
-         */
-        //virtual void storeAbsolute( QDomNode & node, QDomDocument & document ) const;
 
         /**
          * Returns the box tag annotation as a pixmap.

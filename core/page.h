@@ -150,6 +150,11 @@ class OKULARCORE_EXPORT Page
         bool hasTextPage() const;
 
         /**
+         * Returns the document to which the page belongs.
+         */
+        Document *document() const;
+
+        /**
          * Returns the text offset of the page relative to the document.
          */
         uint offset() const;
@@ -208,19 +213,19 @@ class OKULARCORE_EXPORT Page
          * Returns the page reference (or part of it).
          * @see TextPage::reference()
          */
-        Okular::TextReference* reference( const RegularAreaRect * rect = 0 ) const;
+        Okular::TextReference reference( const RegularAreaRect * rect = 0 ) const;
 
         /**
          * Returns the area taken by a text reference.
          * @see TextPage::TextReferenceArea()
          */
-        RegularAreaRect* TextReferenceArea( const Okular::TextReference* ref ) const;
+        RegularAreaRect* TextReferenceArea( const Okular::TextReference ref ) const;
 
         /**
          * Returns the page reference (or part of it).
          * @see TextPage::reference()
          */
-        Okular::TextReference* reference( const RegularAreaRect * rect, TextPage::TextAreaInclusionBehaviour b ) const;
+        Okular::TextReference reference( const RegularAreaRect * rect, TextPage::TextAreaInclusionBehaviour b ) const;
 
         /**
          * Returns the page text (or part of it) including the bounding

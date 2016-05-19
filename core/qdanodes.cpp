@@ -12,7 +12,11 @@
 // qt/kde includes
 #include <QtCore/QUuid>
 #include <QtGui/QColor>
-#include <QtCore/QDebug>
+
+// local includes
+#include "debug_p.h"
+#include "document_p.h"
+#include "page.h"
 
 using namespace Okular;
 
@@ -84,61 +88,82 @@ void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
     }
 }
 
-void QDANodeUtils::load(const QDomNode& node)
+void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
 {
     QDomElement e = node.firstChildElement( QStringLiteral("node") );
 
     while (! e.isNull() )
     {
-        QDANode *qdanode;
+        //  If same QDANode is already loaded, then more recent one replaces the other.
+        QDateTime oldCreationDate, oldModifyDate, newCreationDate, newModifyDate;
+
+        QDANode *qdaNode;
         if ( e.hasAttribute( QStringLiteral("uniqueName") ) )
         {
             QString uniqueName = e.attribute( QStringLiteral("uniqueName") );
-            qdanode = QDANodeUtils::retrieve( uniqueName );
+            qdaNode = QDANodeUtils::retrieve( uniqueName );
 
-            if ( qdanode )
+            if ( qdaNode )
             {
-                //  If same qdanode is already loaded, then more recent one replaces the other.
-                QDateTime old_creationDate, old_modifyDate, new_creationDate, new_modifyDate;
-
-                old_creationDate = qdanode->creationDate();
-                old_modifyDate   = qdanode->modificationDate();
-
-                if ( e.hasAttribute( QStringLiteral("creationDate") ) )
-                    new_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
-                if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
-                    new_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
-
-                new_modifyDate = std::max ( new_creationDate, new_modifyDate );
-                if ( new_modifyDate > std::max ( old_creationDate, old_modifyDate ) )
-                {
-                    if (! new_modifyDate.isNull() )
-                    {
-                        qdanode->setModificationDate ( new_modifyDate );
-                    }
-                    if ( e.hasAttribute( QStringLiteral("author") ) )
-                        qdanode->setAuthor( e.attribute(QStringLiteral("author")) );
-                    if ( e.hasAttribute( QStringLiteral("name") ) )
-                        qdanode->setName( e.attribute(QStringLiteral("name")) );
-                }
-                //  Escape from if-else nest.
-                e = e.nextSiblingElement( QStringLiteral("node") );
-                continue;
+                oldCreationDate = qdaNode->creationDate();
+                oldModifyDate   = qdaNode->modificationDate();
             }
             else
-                qdanode = new QDANode( uniqueName );
+                qdaNode = new QDANode( uniqueName );
         }
         else
-            qdanode = new QDANode();
+            qdaNode = new QDANode();
 
-        if ( e.hasAttribute( QStringLiteral("name") ) )
-            qdanode->m_name = e.attribute( QStringLiteral("name") );
-        if ( e.hasAttribute( QStringLiteral("author") ) )
-            qdanode->m_author = e.attribute( QStringLiteral("author") );
         if ( e.hasAttribute( QStringLiteral("creationDate") ) )
-            qdanode->m_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
+            newCreationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
         if ( e.hasAttribute( QStringLiteral("modifyDate") ) )
-            qdanode->m_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
+            newModifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
+        newModifyDate = std::max ( newCreationDate, newModifyDate );
+
+        if ( newModifyDate >= std::max ( oldCreationDate, oldModifyDate ) )
+        {
+            if (! newCreationDate.isNull() )
+                qdaNode->setModificationDate( newCreationDate );
+            if (! newModifyDate.isNull() )
+                qdaNode->setModificationDate( newModifyDate );
+            if ( e.hasAttribute( QStringLiteral("author") ) )
+                qdaNode->setAuthor( e.attribute(QStringLiteral("author")) );
+            if ( e.hasAttribute( QStringLiteral("name") ) )
+                qdaNode->setName( e.attribute(QStringLiteral("name")) );
+        }
+        QDomElement annElement = e.firstChildElement( QStringLiteral("annotation") );
+        while (! annElement.isNull() )
+        {
+            Annotation * annotation = AnnotationUtils::createAnnotation( doc_p->m_parent, annElement );
+            // append annotation to the list or show warning
+            if ( annotation )
+            {
+                if ( annotation->node() && annotation->node() != qdaNode )
+                {
+                    qCWarning(OkularCoreDebug) << "QDANodeUtils::load annotation node inconsistent in annotation: " << annotation->uniqueName();
+                    delete annotation;
+                }
+                else if ( static_cast<TextTagAnnotation *>( annotation )->reference().isNull() )
+                {
+                    qCWarning(OkularCoreDebug) << "QDANodeUtils::load annotation has null reference in annotation: " << annotation->uniqueName();
+                    delete annotation;
+                }
+                else
+                {
+                    Annotation *annIt = annotation;
+                    while ( annIt )
+                    {
+                        doc_p->performAddPageAnnotation(annotation->pageNum(), annotation);
+                        annIt = annIt->next();
+                    }
+                    qCDebug(OkularCoreDebug) << "restored annot:" << annotation->uniqueName();
+                }
+            }
+            else
+                qCWarning(OkularCoreDebug).nospace() << "Can't restore a tag annotation from XML.";
+
+            annElement = annElement.nextSiblingElement( QStringLiteral("annotation") );
+        }
 
         e = e.nextSiblingElement( QStringLiteral("node") );
     }
@@ -150,6 +175,7 @@ QDANode::QDANode()
 
     m_uniqueName = uniqueName;
     m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
+    m_annotations = QList<Annotation *> ();
 
     QDANodeUtils::QDANodes.append(this);
 }
@@ -158,6 +184,7 @@ QDANode::QDANode( QString uniqueName )
 {
     m_uniqueName = uniqueName;
     m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
+    m_annotations = QList<Annotation *> ();
 
     QDANodeUtils::QDANodes.append(this);
 }
@@ -184,8 +211,13 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
 
     QList< Annotation * >::const_iterator annIt = m_annotations.constBegin(), annEnd = m_annotations.constEnd();
     for ( ; annIt != annEnd; ++annIt )
-        (*annIt)->storeAbsolute( e, document );
-
+    {
+        QDomElement annElement = document.createElement( QStringLiteral("annotation") );
+        annElement.setAttribute( QStringLiteral("type"), (*annIt)->subType() );
+        e.appendChild( annElement );
+        (*annIt)->store( annElement, document );
+        qCDebug(OkularCoreDebug) << "save annotation:" << (*annIt)->uniqueName();
+    }
 }
 
 QString QDANode::uniqueName() const
@@ -245,14 +277,24 @@ QDateTime QDANode::modificationDate() const
 
 void QDANode::addAnnotation( Annotation *ann )
 {
-    qDebug() << "addAnnotation: " << ann;
-    m_annotations.append( ann );
+    if ( m_annotations.indexOf( ann ) != -1 )
+        qCWarning(OkularCoreDebug) << "QDANode::addAnnotation annotation already in node annotation: " << ann->uniqueName();
+    else
+    {
+        m_annotations.append( ann );
+        ann->setPrevNode ( this );
+    }
 }
 
 void QDANode::removeAnnotation( Annotation *ann )
 {
-    qDebug() << "removeAnnotation: " << ann;
-    m_annotations.removeAll( ann );
+    if ( m_annotations.indexOf( ann ) == -1 )
+        qCWarning(OkularCoreDebug) << "QDANode::removeAnnotation annotation not in node annotation: " << ann->uniqueName();
+    else
+    {
+        m_annotations.removeAll( ann );
+        ann->setPrevNode ( 0 );
+    }
 }
 
 //END QDANode implementation

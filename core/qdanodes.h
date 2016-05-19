@@ -40,7 +40,7 @@ class OKULARCORE_EXPORT QDANodeUtils
         static QDANode * retrieve( QString m_uniqueName );
 
         static void storeQDANodes( QDomElement & QDAElement, QDomDocument & doc );
-        static void load(const QDomNode& node);
+        static void load( DocumentPrivate *doc_p, const QDomNode& node);
 };
 
 class OKULARCORE_EXPORT QDANode

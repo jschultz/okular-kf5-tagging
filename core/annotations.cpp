@@ -19,6 +19,7 @@
 
 // local includes
 #include "action.h"
+#include "debug_p.h"
 #include "document.h"
 #include "document_p.h"
 #include "movie.h"
@@ -124,6 +125,29 @@ Annotation * AnnotationUtils::createAnnotation( const QDomElement & annElement )
             break;
         case Annotation::ATTag:
             annotation = new TextTagAnnotation( annElement );
+            break;
+        case Annotation::ABTag:
+            annotation = new BoxTagAnnotation( annElement );
+            break;
+    }
+
+    // return created annotation
+    return annotation;
+}
+
+Annotation * AnnotationUtils::createAnnotation( Document *doc, const QDomElement & annElement )
+{
+    // safety check on annotation element
+    if ( !annElement.hasAttribute( QStringLiteral("type") ) )
+        return 0;
+
+    // build annotation of given type
+    Annotation * annotation = 0;
+    int typeNumber = annElement.attribute( QStringLiteral("type") ).toInt();
+    switch ( typeNumber )
+    {
+        case Annotation::ATTag:
+            annotation = new TextTagAnnotation( doc, annElement );
             break;
         case Annotation::ABTag:
             annotation = new BoxTagAnnotation( annElement );
@@ -546,16 +570,18 @@ Annotation *Annotation::next() const
     return 0;
 }
 
-const QDANode * Annotation::node() const
+QDANode * Annotation::node() const
 {
     return 0;
 }
 
-const Page * Annotation::page() const
+void Annotation::setPrevNode( QDANode *node )
 {
-    Q_D( const Annotation );
+}
 
-    return d->m_page->m_page;
+uint Annotation::pageNum() const
+{
+    return 0;
 }
 
 void Annotation::setAuthor( const QString &author )
@@ -739,6 +765,31 @@ bool Annotation::canBeMoved() const
     return true;
 }
 
+void Annotation::storeAttributes( QDomElement & baseElement ) const
+{
+    Q_D( const Annotation );
+
+    // store -contents- attributes
+    if ( !d->m_author.isEmpty() )
+        baseElement.setAttribute( QStringLiteral("author"), d->m_author );
+    if ( !d->m_contents.isEmpty() )
+        baseElement.setAttribute( QStringLiteral("contents"), d->m_contents );
+    if ( !d->m_uniqueName.isEmpty() )
+        baseElement.setAttribute( QStringLiteral("uniqueName"), d->m_uniqueName );
+    if ( d->m_modifyDate.isValid() )
+        baseElement.setAttribute( QStringLiteral("modifyDate"), d->m_modifyDate.toString(Qt::ISODate) );
+    if ( d->m_creationDate.isValid() )
+        baseElement.setAttribute( QStringLiteral("creationDate"), d->m_creationDate.toString(Qt::ISODate) );
+
+    // store -other- attributes
+    if ( d->m_flags ) // Strip internal flags
+        baseElement.setAttribute( QStringLiteral("flags"), d->m_flags & ~(External | ExternallyDrawn | BeingMoved) );
+    if ( d->m_style.color().isValid() )
+        baseElement.setAttribute( QStringLiteral("color"), d->m_style.color().name() );
+    if ( d->m_style.opacity() != 1.0 )
+        baseElement.setAttribute( QStringLiteral("opacity"), QString::number( d->m_style.opacity() ) );
+}
+
 void Annotation::store( QDomNode & annNode, QDomDocument & document ) const
 {
     Q_D( const Annotation );
@@ -746,33 +797,18 @@ void Annotation::store( QDomNode & annNode, QDomDocument & document ) const
     QDomElement e = document.createElement( QStringLiteral("base") );
     annNode.appendChild( e );
 
-    // store -contents- attributes
-    if ( !d->m_author.isEmpty() )
-        e.setAttribute( QStringLiteral("author"), d->m_author );
-    if ( !d->m_contents.isEmpty() )
-        e.setAttribute( QStringLiteral("contents"), d->m_contents );
-    if ( !d->m_uniqueName.isEmpty() )
-        e.setAttribute( QStringLiteral("uniqueName"), d->m_uniqueName );
-    if ( d->m_modifyDate.isValid() )
-        e.setAttribute( QStringLiteral("modifyDate"), d->m_modifyDate.toString(Qt::ISODate) );
-    if ( d->m_creationDate.isValid() )
-        e.setAttribute( QStringLiteral("creationDate"), d->m_creationDate.toString(Qt::ISODate) );
-
-    // store -other- attributes
-    if ( d->m_flags ) // Strip internal flags
-        e.setAttribute( QStringLiteral("flags"), d->m_flags & ~(External | ExternallyDrawn | BeingMoved) );
-    if ( d->m_style.color().isValid() )
-        e.setAttribute( QStringLiteral("color"), d->m_style.color().name() );
-    if ( d->m_style.opacity() != 1.0 )
-        e.setAttribute( QStringLiteral("opacity"), QString::number( d->m_style.opacity() ) );
+    this->storeAttributes( e );
 
     // Sub-Node-1 - boundary
-    QDomElement bE = document.createElement( QStringLiteral("boundary") );
-    e.appendChild( bE );
-    bE.setAttribute( QStringLiteral("l"), QString::number( d->m_boundary.left ) );
-    bE.setAttribute( QStringLiteral("t"), QString::number( d->m_boundary.top ) );
-    bE.setAttribute( QStringLiteral("r"), QString::number( d->m_boundary.right ) );
-    bE.setAttribute( QStringLiteral("b"), QString::number( d->m_boundary.bottom ) );
+    if ( this->subType() != ATTag )     //  A bit ugly but can't easily be helped.
+    {
+        QDomElement bE = document.createElement( QStringLiteral("boundary") );
+        e.appendChild( bE );
+        bE.setAttribute( QStringLiteral("l"), QString::number( d->m_boundary.left ) );
+        bE.setAttribute( QStringLiteral("t"), QString::number( d->m_boundary.top ) );
+        bE.setAttribute( QStringLiteral("r"), QString::number( d->m_boundary.right ) );
+        bE.setAttribute( QStringLiteral("b"), QString::number( d->m_boundary.bottom ) );
+    }
 
     // Sub-Node-2 - penStyle
     if ( d->m_style.width() != 1 || d->m_style.lineStyle() != Solid || d->m_style.xCorners() != 0 ||
@@ -832,10 +868,6 @@ void Annotation::store( QDomNode & annNode, QDomDocument & document ) const
     }
 }
 
-void Annotation::storeAbsolute( QDomNode & node, QDomDocument & document ) const
-{
-}
-
 QDomNode Annotation::getAnnotationPropertiesDomNode() const
 {
     QDomDocument doc( QStringLiteral("documentInfo") );
@@ -858,14 +890,14 @@ void Annotation::setAnnotationProperties( const QDomNode& node )
     delete( d_ptr );
     d_ptr = new_d_ptr;
 
-    // Set the annotations properties from node
-    d_ptr->setAnnotationProperties(node);
-
     // Restore internal properties
     d_ptr->m_page = p;
     d_ptr->m_nativeId = nativeID;
     d_ptr->m_flags = d_ptr->m_flags | internalFlags;
     d_ptr->m_disposeFunc = disposeFunc;
+
+    // Set the annotations properties from node
+    d_ptr->setAnnotationProperties(node);
 
     // Transform annotation to current page rotation
     d_ptr->transform( d_ptr->m_page->rotationMatrix() );
@@ -3088,13 +3120,37 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
         TextTagAnnotationPrivate()
-            : AnnotationPrivate(), m_head( 0 ), m_next( 0 ), m_node( 0 ), m_ref( 0 ), m_textArea( 0 ), m_transformedTextArea( 0 )
+            : AnnotationPrivate(),
+              m_head( 0 ),
+              m_next( 0 ),
+              m_parent( 0 ),
+              m_node( 0 ),
+              m_prevNode( 0 ),
+              m_pageNum( 0 ),
+              m_doc( 0 ),
+              m_ref( { 0, 0 } ),
+              m_textArea( 0 ),
+              m_transformedTextArea( 0 )
+        {
+        }
+
+        TextTagAnnotationPrivate( Document *doc )
+            : AnnotationPrivate(),
+              m_head( 0 ),
+              m_next( 0 ),
+              m_parent( 0 ),
+              m_node( 0 ),
+              m_prevNode( 0 ),
+              m_pageNum( 0 ),
+              m_doc( doc ),
+              m_ref( { 0, 0 } ),
+              m_textArea( 0 ),
+              m_transformedTextArea( 0 )
         {
         }
 
         ~TextTagAnnotationPrivate()
         {
-            delete m_ref;
             delete m_textArea;
             delete m_transformedTextArea;
         }
@@ -3108,22 +3164,25 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
 
         TextTagAnnotation *m_head, *m_next;     //  Structures to link multi-page annotations
 
-        QDANode *m_node;
-        const TextReference * m_ref;
+        TextTagAnnotation *m_parent;
+
+        QDANode *m_node, *m_prevNode;
+        //  Note that unlike m_page, m_pageNum is always assigned.
+        uint m_pageNum;
+        Document *m_doc;
+        TextReference m_ref;
         RegularAreaRect * m_textArea;
         RegularAreaRect * m_transformedTextArea;
 };
 
 #define head_d (static_cast <TextTagAnnotationPrivate *> (d_ptr)->m_head ? static_cast <TextTagAnnotationPrivate *> ( static_cast <TextTagAnnotationPrivate *> (d_ptr)->m_head->d_ptr ) : static_cast <TextTagAnnotationPrivate *> (d_ptr))
 
-//  Static table of text tag annotations to help rebuild structures on file load.
-QHash<QString, TextTagAnnotation *> TextTagAnnotation::tTagAnnotationTable;
-
-TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * ref )
+TextTagAnnotation::TextTagAnnotation( const Page * page, TextReference ref )
     : Annotation( *new TextTagAnnotationPrivate() )
 {
     Q_D( TextTagAnnotation );
 
+    d->m_parent = this;
     d->m_ref = ref;
     d->m_textArea = page->TextReferenceArea( ref );
     NormalizedRect rect = d->m_textArea->first();
@@ -3135,7 +3194,7 @@ TextTagAnnotation::TextTagAnnotation( const Page * page, const TextReference * r
     d->m_boundary = rect;
 }
 
-TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * page, const TextReference * ref )
+TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * page, TextReference ref )
     : TextTagAnnotation( page, ref )
 {
     Q_D( TextTagAnnotation );
@@ -3155,46 +3214,28 @@ TextTagAnnotation::TextTagAnnotation( TextTagAnnotation * head, const Page * pag
     }
 }
 
-void TextTagAnnotation::appendAnnotation()
-{
-    Q_D( TextTagAnnotation );
-
-    if ( d->m_head )
-    {
-        TextTagAnnotation * tTagIt = d->m_head;
-        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-        //  Second part of condition shouldn't ever happen, but including it will prevent looping
-        //  in case of data inconsistency.
-        while ( tTagPIt->m_next && tTagPIt->m_next != this )
-        {
-            tTagIt = tTagPIt->m_next;
-            tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-        }
-        if ( tTagIt != this )
-            tTagPIt->m_next = this;
-    }
-}
-
 TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
     : Annotation( *new TextTagAnnotationPrivate(), node )
 {
     Q_D( TextTagAnnotation );
 
-    //  Add annotation to new QDA node, but only if this is the head annotation.
-    if (! d->m_head )
-        d->m_node->addAnnotation( this );
+    d->m_parent = this;
+}
 
-    this->appendAnnotation();
+TextTagAnnotation::TextTagAnnotation( Document *doc, const QDomNode & node )
+    : Annotation( *new TextTagAnnotationPrivate( doc ), node )
+{
+    Q_D( TextTagAnnotation );
 
-    //  Save this tag for future lookup
-    tTagAnnotationTable[d->m_uniqueName] = this;
+    d->m_parent = this;
 }
 
 TextTagAnnotation::~TextTagAnnotation()
 {
     Q_D( TextTagAnnotation );
 
-    tTagAnnotationTable[d->m_uniqueName] = 0;
+    if ( d->m_node )
+        d->m_node->removeAnnotation( this );
 }
 
 TextTagAnnotation::Annotation * TextTagAnnotation::head()
@@ -3213,24 +3254,25 @@ TextTagAnnotation::Annotation * TextTagAnnotation::next() const
 
 void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
 {
-    //  Save and restore the next annotation field.
+    if ( static_cast<TextTagAnnotationPrivate *>(d_ptr)->m_head )
+        qCWarning(OkularCoreDebug) << "TextTagAnnotation::setAnnotationProperties called with non-head annotation: " << static_cast<TextTagAnnotationPrivate *>(d_ptr)->m_uniqueName;
+
+    //  Save and restore private fields that will be erased.
     TextTagAnnotation * nextAnn = static_cast<TextTagAnnotation *>( this->next() );
     //  Remove annotation from current QDA node
-    if ( head_d->m_node )
-        head_d->m_node->removeAnnotation( this );
+    if ( head_d->m_prevNode )
+        head_d->m_prevNode->removeAnnotation( this );
 
     Annotation::setAnnotationProperties( node );
 
     //  Need to delay this until after call to setAnnotationProperties
     Q_D( TextTagAnnotation );
 
+    d->m_parent = this;
     d->m_next = nextAnn;
 
-    //  Add annotation to new QDA node, but only if this is the head annotation.
-    if (! d->m_head )
-        d->m_node->addAnnotation( this );
-
-    this->appendAnnotation();
+    //  Add annotation to new QDA node.
+    d->m_node->addAnnotation( this );
 
     //  Since the TextTagAnnotationPrivate record has been recreated, we need to
     //  recalculate the text area fields.
@@ -3247,16 +3289,22 @@ void TextTagAnnotation::setNode( QDANode *node )
 {
     Q_D( TextTagAnnotation );
 
-    if ( head_d->m_node )
-        head_d->m_node->removeAnnotation( this );
+    if ( d->m_head )
+        qCWarning(OkularCoreDebug) << "TextTagAnnotation::setNode called with non-head annotation";
 
-    head_d->m_node = node;
-
-    if ( head_d->m_node )
-        head_d->m_node->addAnnotation( this );
+    d->m_node = node;
+    this->style().setColor( node->color() );
+    this->style().setOpacity( 0.5 );
 }
 
-const QDANode * TextTagAnnotation::node() const
+void TextTagAnnotation::setPrevNode( QDANode *node )
+{
+    Q_D( TextTagAnnotation );
+
+    d->m_prevNode = node;
+}
+
+QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
 
@@ -3305,6 +3353,23 @@ Annotation::SubType TextTagAnnotation::subType() const
     return ATTag;
 }
 
+uint TextTagAnnotation::pageNum() const
+{
+    Q_D( const TextTagAnnotation );
+
+    return d->m_pageNum;
+}
+
+Annotation::Style & TextTagAnnotation::style()
+{
+    return head_d->m_style;
+}
+
+const Annotation::Style & TextTagAnnotation::style() const
+{
+    return head_d->m_style;
+}
+
 QString TextTagAnnotation::text() const
 {
     Q_D( const TextTagAnnotation );
@@ -3320,59 +3385,48 @@ QString TextTagAnnotation::text() const
     return ret;
 }
 
+TextReference TextTagAnnotation::reference() const
+{
+    Q_D( const TextTagAnnotation );
+
+    return d->m_ref;
+}
+
+
 void TextTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 {
     Q_D( const TextTagAnnotation );
 
+    if ( d->m_head )
+        qCWarning(OkularCoreDebug) << "TextTagAnnotation::store called with non-head annotation: " << d->m_uniqueName;
+
     // recurse to parent objects storing properties
     Annotation::store( node, document );
 
-    // create [texttag] element
-    QDomElement TTagElement = document.createElement( QStringLiteral("texttag") );
-    node.lastChild().appendChild( TTagElement );
+    //  Dig up the base node to add the QDA Node reference
+    QDomElement baseElement = AnnotationUtils::findChildElement( node, QStringLiteral("base") );
+    baseElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
 
-    // store the optional attributes
-    if ( d->m_head )
-        TTagElement.setAttribute( QStringLiteral("head"), d->m_head->uniqueName() );
-    if ( d->m_node )
-        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
-
-    if ( d->m_ref )   //  Shouldn't be necessary but just in case...
+    if ( d->m_ref.isNull() )
+        qCWarning(OkularCoreDebug) << "TextTagAnnotation::store annotation: " << d->m_uniqueName << " has no reference field.";
+    else
     {
         QDomElement e = document.createElement( "textref" );
-        TTagElement.appendChild( e );
+        node.appendChild( e );
 
-        e.setAttribute( QStringLiteral("o"), d->m_ref->offset() );
-        e.setAttribute( QStringLiteral("l"), d->m_ref->length() );
+        e.setAttribute( QStringLiteral("o"), d->m_ref.offset + d->m_page->m_page->offset() );
+        uint length = d->m_ref.length;
+
+        TextTagAnnotation *tTagIt = d->m_next;
+        while ( tTagIt )
+        {
+            TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
+            length += tTagPIt->m_ref.length;
+            tTagIt = tTagPIt->m_next;
+        }
+
+        e.setAttribute( QStringLiteral("l"), length );
     }
-}
-
-void TextTagAnnotation::storeAbsolute( QDomNode & node, QDomDocument & document ) const
-{
-    Q_D( const TextTagAnnotation );
-
-    // recurse to parent objects storing properties
-    Annotation::store( node, document );
-
-    // create [texttag] element
-    QDomElement TTagElement = document.createElement( QStringLiteral("texttag") );
-    node.lastChild().appendChild( TTagElement );
-
-    QDomElement e = document.createElement( "textref" );
-    TTagElement.appendChild( e );
-
-    e.setAttribute( QStringLiteral("o"), d->m_ref->offset() + d->m_page->m_page->offset() );
-    uint length = d->m_ref->length();
-
-    TextTagAnnotation *tTagIt = d->m_next;
-    while ( tTagIt )
-    {
-        TextTagAnnotationPrivate *tTagPIt = static_cast <TextTagAnnotationPrivate *> (tTagIt->d_ptr);
-        length += tTagPIt->m_ref->length();
-        tTagIt = tTagPIt->m_next;
-    }
-
-    e.setAttribute( QStringLiteral("l"), length );
 }
 
 void TextTagAnnotationPrivate::transform( const QTransform &matrix )
@@ -3407,46 +3461,65 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
     Okular::AnnotationPrivate::setAnnotationProperties(node);
 
-    // get the [base] element of the annotation node
-    QDomElement e = AnnotationUtils::findChildElement( node, QStringLiteral("base") );
-    if ( e.isNull() )
-        return;
+    //  This is a pretty awful hack to restore the m_doc field via the m_page field
+    if (! m_doc )
+        m_doc = m_page->m_doc->m_parent;
 
     // loop through the whole children looking for a 'text' element
-    QDomNode subNode = e.firstChild();
+    QDomNode subNode = node.firstChild();
     while( subNode.isElement() )
     {
         QDomElement e = subNode.toElement();
         subNode = subNode.nextSibling();
-        if ( e.tagName() != QLatin1String("texttag") )
-            continue;
 
-        // parse the attributes
-        if ( e.hasAttribute( QStringLiteral("node") ) )
-            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
-        if ( e.hasAttribute( QStringLiteral("head") ) )
-            m_head = TextTagAnnotation::tTagAnnotationTable[ e.attribute( "head" ) ];
-
-        if (! m_node && ! m_head )
-            m_node = new QDANode ();
-
-        QDomNode taggingNode = e.firstChild();
-        while( taggingNode.isElement() )
+        if ( e.tagName() == "base"
+        &&   e.hasAttribute( QStringLiteral("node") )
+        &&   ! m_node )
         {
-            // get annotation element and advance to next annot
-            QDomElement tagElement = taggingNode.toElement();
-            taggingNode = taggingNode.nextSibling();
-
-            if ( tagElement.tagName() == "textref" )
-            {
-                m_ref = new TextReference (
-                    tagElement.attribute( "o" ).toInt(),
-                    tagElement.attribute( "l" ).toInt() );
-            }
+            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+            if (! m_node)
+                m_node = new QDANode();
         }
 
-        // loading complete
-        break;
+        if ( e.tagName() == "textref" )
+        {
+            TextTagAnnotation *headAnn = this->m_parent;
+
+            uint remainingLength = e.attribute( "l" ).toInt();
+            uint pageOffset = e.attribute( "o" ).toInt();
+
+            //  Find page where annotation starts
+            uint pageNum = 0;
+            const Page *page = m_doc->page( pageNum );
+            const Page *nextPage = m_doc->page( pageNum + 1 );
+            while ( nextPage && nextPage->offset() < pageOffset )
+            {
+                pageNum++;
+                page = nextPage;
+                nextPage = m_doc->page( pageNum + 1 );
+            }
+
+            pageOffset -= page->offset();
+            uint pageLength = nextPage ? std::min( remainingLength, nextPage->offset() - page->offset() - pageOffset ) : remainingLength;
+            remainingLength -= pageLength;
+
+            m_pageNum = pageNum;
+            m_ref = { pageOffset, pageLength };
+
+            while ( nextPage && remainingLength )
+            {
+                pageNum++;
+                page = nextPage;
+                nextPage = m_doc->page( pageNum + 1 );
+
+                uint pageLength = nextPage ? std::min( remainingLength, nextPage->offset() - page->offset() ) : remainingLength;
+                remainingLength -= pageLength;
+
+                TextTagAnnotation *ann = new TextTagAnnotation( headAnn, page, { 0, pageLength } );
+                static_cast<TextTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
+            }
+            break;
+        }
     }
 }
 
@@ -3600,7 +3673,7 @@ void BoxTagAnnotation::setNode( QDANode *node )
         head_d->m_node->addAnnotation( this );
 }
 
-const QDANode * BoxTagAnnotation::node() const
+QDANode * BoxTagAnnotation::node() const
 {
     Q_D( const BoxTagAnnotation );
 

@@ -230,6 +230,11 @@ bool Page::hasTextPage() const
     return d->m_text != 0;
 }
 
+Document *Page::document() const
+{
+    return d->m_doc->m_parent;
+}
+
 uint Page::offset() const
 {
     if (! d->m_text )
@@ -329,17 +334,17 @@ QString Page::text( const RegularAreaRect * area, TextPage::TextAreaInclusionBeh
     return ret;
 }
 
-Okular::TextReference* Page::reference( const RegularAreaRect * area ) const
+Okular::TextReference Page::reference( const RegularAreaRect * area ) const
 {
     return reference( area, TextPage::AnyPixelTextAreaInclusionBehaviour );
 }
 
-Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::TextAreaInclusionBehaviour b ) const
+Okular::TextReference Page::reference( const RegularAreaRect * area, TextPage::TextAreaInclusionBehaviour b ) const
 {
-    Okular::TextReference* ret;
+    Okular::TextReference ret;
 
     if ( !d->m_text )
-        return 0;
+        return { 0, 0 };
 
     if ( area )
     {
@@ -349,21 +354,21 @@ Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::
         ret = d->m_text->reference( &rotatedArea, b );
 
 	//  JS test text reference area functions
-        RegularAreaRect *textarea = d->m_text->TextReferenceArea( ret );
-        bool equal = ( textarea->count() == rotatedArea.count() );
-        if ( equal )
-        {
-            for (int i = 0; i < rotatedArea.count(); i++)
-            {
-                if (! (textarea->at(i) == rotatedArea.at(i)))
-                {
-                    equal = 0;
-                    break;
-                }
-            }
-        }
-        if ( ! equal )
-            qCWarning(OkularCoreDebug) << "XXXXXX Text reference error";
+//         RegularAreaRect *textarea = d->m_text->TextReferenceArea( ret );
+//         bool equal = ( textarea->count() == rotatedArea.count() );
+//         if ( equal )
+//         {
+//             for (int i = 0; i < rotatedArea.count(); i++)
+//             {
+//                 if (! (textarea->at(i) == rotatedArea.at(i)))
+//                 {
+//                     equal = 0;
+//                     break;
+//                 }
+//             }
+//         }
+//         if ( ! equal )
+//             qCWarning(OkularCoreDebug) << "XXXXXX Text reference error";
     }
     else
         ret = d->m_text->reference( 0, b );
@@ -371,7 +376,7 @@ Okular::TextReference* Page::reference( const RegularAreaRect * area, TextPage::
     return ret;
 }
 
-RegularAreaRect* Page::TextReferenceArea( const Okular::TextReference* ref ) const
+RegularAreaRect* Page::TextReferenceArea( const Okular::TextReference ref ) const
 {
     if (! d->m_text )
         d->m_doc->m_parent->requestTextPage( d->m_page->number() );
@@ -697,6 +702,14 @@ void Page::addAnnotation( Annotation * annotation )
     annotation->d_ptr->m_page = d;
     m_annotations.append( annotation );
 
+    //  If annotation is head then add it to node's list of annotations
+    if ( annotation == annotation->head() )
+    {
+        QDANode *node = annotation->node();
+        if ( node )
+            node->addAnnotation( annotation );
+    }
+
     AnnotationObjectRect *rect = new AnnotationObjectRect( annotation );
 
     // Rotate the annotation on the page.
@@ -727,7 +740,17 @@ bool Page::removeAnnotation( Annotation * annotation )
                 }
             qCDebug(OkularCoreDebug) << "removed annotation:" << annotation->uniqueName();
             annotation->d_ptr->m_page = 0;
+
             m_annotations.erase( aIt );
+
+            //  If annotation is head then remove it from node's list of annotations
+            if ( annotation == annotation->head() )
+            {
+                QDANode *node = annotation->node();
+                if ( node )
+                    node->removeAnnotation( annotation );
+            }
+
             break;
         }
     }
@@ -969,7 +992,9 @@ void PagePrivate::saveLocalContents( QDomNode & parentNode, QDomDocument & docum
             // get annotation
             const Annotation * a = *aIt;
             // only save okular annotations (not the embedded in file ones)
-            if ( !(a->flags() & Annotation::External) )
+            if ( ( !(a->flags() & Annotation::External) )
+            //  JS: Better to add a new flag
+            &&   a->subType() != Annotation::ATTag && a->subType() != Annotation::ABTag )
             {
                 // append an filled-up element called 'annotation' to the list
                 QDomElement annElement = document.createElement( QStringLiteral("annotation") );

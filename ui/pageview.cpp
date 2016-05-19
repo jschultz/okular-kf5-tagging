@@ -2270,7 +2270,7 @@ void PageView::mousePressEvent( QMouseEvent * e )
                             Okular::Annotation * ann = ( (Okular::AnnotationObjectRect *)annRect )->annotation();
                             if ( ann && (ann->subType() == Okular::Annotation::ATTag
                               || ann->subType() == Okular::Annotation::ABTag) )
-                                popup.addAnnotation( ann->head(), ann->head()->page()->number() );
+                                popup.addAnnotation( ann->head(), ann->head()->pageNum() );
                             else if ( ann && (ann->subType() != Okular::Annotation::AWidget) )
                                 popup.addAnnotation( ann, pageItem->pageNumber() );
 

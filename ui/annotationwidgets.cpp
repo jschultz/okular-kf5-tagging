@@ -830,7 +830,10 @@ void TextTagAnnotationWidget::applyChanges()
 
     Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
     QString nodeName = m_QDANode->currentText();
-    m_tTagAnn->setNode( node );
+
+    //  Only update the node if the value has changed. This allows manual style adjustment to remain.
+    if ( node != m_tTagAnn->node() )
+        m_tTagAnn->setNode( node );
     node->setName( nodeName );
 }
 

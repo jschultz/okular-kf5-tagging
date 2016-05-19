@@ -53,6 +53,8 @@ class AnnotationPrivate
          */
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
+        //  Note that m_page is only assigned when the annotation is actually attached to a page, ie
+        //  not when it has been deleted or first loaded.
         PagePrivate * m_page;
 
         QString m_author;
