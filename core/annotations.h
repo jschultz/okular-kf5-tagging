@@ -1775,9 +1775,18 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         TextTagAnnotation( TextTagAnnotation * head, const Page * page, TextReference ref );
 
         /**
-         * Creates a new text tagging from the xml @p description
+         * Creates a new text tagging from the xml @p description. This constructor is only
+         * useful when either the m_doc field has been filled in the annotation private data
+         * structure, or the annotation is currently attached to a page - in the latter case
+         * the code can find the document through the page structure.
          */
         TextTagAnnotation( const QDomNode &description );
+
+        /**
+         * Creates a new text tagging from the xml @p description. This constructor is used
+         * when first loading the text tag annotation from the docdata file and needs to be
+         * given a reference to the document.
+         */
         TextTagAnnotation( Document *doc, const QDomNode &description );
 
         /**
@@ -1897,9 +1906,19 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         BoxTagAnnotation( BoxTagAnnotation * head, const NormalizedRect *rect );
 
         /**
-         * Creates a new box tagging from the xml @p description
+         * Creates a new text tagging from the xml @p description. This constructor is only
+         * useful when either the m_doc field has been filled in the annotation private data
+         * structure, or the annotation is currently attached to a page - in the latter case
+         * the code can find the document through the page structure.
          */
         BoxTagAnnotation( const QDomNode &description );
+
+        /**
+         * Creates a new text tagging from the xml @p description. This constructor is used
+         * when first loading the text tag annotation from the docdata file and needs to be
+         * given a reference to the document.
+         */
+        BoxTagAnnotation( Document *doc, const QDomNode &description );
 
         /**
          * Destroys the text tagging.
@@ -1931,7 +1950,7 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Sets the previous node of the box tagging
          */
-//        virtual void setPrevNode ( QDANode *node );
+       virtual void setPrevNode ( QDANode *node );
 
         /**
          * Returns the node of the tagging

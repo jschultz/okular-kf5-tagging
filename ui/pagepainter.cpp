@@ -814,7 +814,6 @@ void PagePainter::paintCroppedPageOnPainter( QPainter * destPainter, const Okula
                     // get tagging boundary and drawn rect
                     QRect tagBoundary = rect.geometry( scaledWidth, scaledHeight ).translated( -scaledCrop.topLeft() );
                     QRect tagRect = tagBoundary.intersect( limits );
-                    qCDebug(OkularCoreDebug) << "C: " << a->uniqueName() << " width:" << tagRect.width() << " height:" << tagRect.height();
 
                     QImage * scaledImage = new QImage (tagRect.width(), tagRect.height(),
                                                         QImage::Format_ARGB32 );

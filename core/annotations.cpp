@@ -150,7 +150,7 @@ Annotation * AnnotationUtils::createAnnotation( Document *doc, const QDomElement
             annotation = new TextTagAnnotation( doc, annElement );
             break;
         case Annotation::ABTag:
-            annotation = new BoxTagAnnotation( annElement );
+            annotation = new BoxTagAnnotation( doc, annElement );
             break;
     }
 
@@ -3124,7 +3124,7 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
               m_next( 0 ),
               m_parent( 0 ),
               m_node( 0 ),
-              m_prevNode( 0 ),
+              m_linkNode( 0 ),
               m_pageNum( 0 ),
               m_doc( 0 ),
               m_ref( { 0, 0 } ),
@@ -3147,15 +3147,14 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
         TextTagAnnotation *m_head, *m_next;     //  Structures to link multi-page annotations
-
-        TextTagAnnotation *m_parent;
-
-        QDANode *m_node, *m_prevNode;
-        //  Note that unlike m_page, m_pageNum is always assigned.
-        uint m_pageNum;
+        TextTagAnnotation *m_parent;            //  For when we need to access public structure
+        QDANode *m_node;                        //  This pointer can be updated
+        QDANode *m_linkNode;                    //  This pointer must point to QDA Node structure
+                                                //  that has the present annotation in its list.
+        uint m_pageNum;                         //  Unlike m_page, m_pageNum is always assigned.
         Document *m_doc;
         TextReference m_ref;
-        RegularAreaRect * m_textArea;
+        RegularAreaRect * m_textArea;           //  The space on the page taken by this annotation.
         RegularAreaRect * m_transformedTextArea;
 };
 
@@ -3203,7 +3202,7 @@ TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
 {
     Q_D( TextTagAnnotation );
 
-    d->m_parent = this;
+    d->m_parent = this;     //  JS: Can we use Q_Q to avoid need for m_parent?
 }
 
 TextTagAnnotation::TextTagAnnotation( Document *doc, const QDomNode & node )
@@ -3229,8 +3228,8 @@ TextTagAnnotation::~TextTagAnnotation()
 {
     Q_D( TextTagAnnotation );
 
-    if ( d->m_node )
-        d->m_node->removeAnnotation( this );
+    if ( d->m_linkNode )
+        d->m_linkNode->removeAnnotation( this );
 }
 
 TextTagAnnotation::Annotation * TextTagAnnotation::head()
@@ -3255,12 +3254,12 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     //  Save and restore private fields that will be erased.
     TextTagAnnotation * nextAnn = static_cast<TextTagAnnotation *>( this->next() );
     //  Remove annotation from current QDA node
-    if ( head_d->m_prevNode )
-        head_d->m_prevNode->removeAnnotation( this );
+    if ( head_d->m_linkNode )
+        head_d->m_linkNode->removeAnnotation( this );
 
     Annotation::setAnnotationProperties( node );
 
-    //  Need to delay this until after call to setAnnotationProperties
+    //  Need to delay this until after call to setAnnotationProperties - Can this be improved?
     Q_D( TextTagAnnotation );
 
     d->m_parent = this;
@@ -3286,38 +3285,38 @@ void TextTagAnnotation::setPrevNode( QDANode *node )
 {
     Q_D( TextTagAnnotation );
 
-    d->m_prevNode = node;
+    d->m_linkNode = node;
 }
 
 QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
 
-    return d->m_node ? d->m_node : head_d->m_node;
+    return head_d->m_node;
 }
 
 QString TextTagAnnotation::author() const
 {
     Q_D( const TextTagAnnotation );
-    return !d->m_author.isNull() ? d->m_author : head_d->m_author;
+    return head_d->m_author;
 }
 
 QString TextTagAnnotation::contents() const
 {
     Q_D( const TextTagAnnotation );
-    return !d->m_contents.isNull() ? d->m_contents : head_d->m_contents;
+    return head_d->m_contents;
 }
 
 QDateTime TextTagAnnotation::modificationDate() const
 {
     Q_D( const TextTagAnnotation );
-    return !d->m_modifyDate.isNull() ? d->m_modifyDate : head_d->m_modifyDate;
+    return head_d->m_modifyDate;
 }
 
 QDateTime TextTagAnnotation::creationDate() const
 {
     Q_D( const TextTagAnnotation );
-    return !d->m_creationDate.isNull() ? d->m_creationDate : head_d->m_creationDate;
+    return head_d->m_creationDate;
 }
 
 int TextTagAnnotation::flags() const
@@ -3326,12 +3325,21 @@ int TextTagAnnotation::flags() const
     return head_d->m_flags;
 }
 
+Annotation::Style & TextTagAnnotation::style()
+{
+    return head_d->m_style;
+}
+
+const Annotation::Style & TextTagAnnotation::style() const
+{
+    return head_d->m_style;
+}
+
 const RegularAreaRect * TextTagAnnotation::transformedTextArea () const
 {
     Q_D( const TextTagAnnotation );
     return d->m_transformedTextArea;
 }
-
 
 Annotation::SubType TextTagAnnotation::subType() const
 {
@@ -3343,16 +3351,6 @@ uint TextTagAnnotation::pageNum() const
     Q_D( const TextTagAnnotation );
 
     return d->m_pageNum;
-}
-
-Annotation::Style & TextTagAnnotation::style()
-{
-    return head_d->m_style;
-}
-
-const Annotation::Style & TextTagAnnotation::style() const
-{
-    return head_d->m_style;
 }
 
 QString TextTagAnnotation::text() const
@@ -3446,7 +3444,8 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
     Okular::AnnotationPrivate::setAnnotationProperties(node);
 
-    //  This is a pretty awful hack to restore the m_doc field via the m_page field
+    //  m_doc can be set either when loading the annotation, or from the attached
+    //  structure.
     if (! m_doc )
     {
         if ( m_page)
@@ -3553,7 +3552,14 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
         BoxTagAnnotationPrivate()
-            : AnnotationPrivate(), m_head( 0 ), m_next( 0 ), m_node( 0 )
+            : AnnotationPrivate(),
+              m_head( 0 ),
+              m_next( 0 ),
+              m_parent( 0 ),
+              m_node( 0 ),
+              m_linkNode( 0 ),
+              m_pageNum( 0 ),
+              m_doc( 0 )
         {
         }
 
@@ -3561,12 +3567,16 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual AnnotationPrivate* getNewAnnotationPrivate();
 
         BoxTagAnnotation *m_head, *m_next;      //  Structures to link multi-page annotations
-
-        QDANode *m_node;
+        BoxTagAnnotation *m_parent;             //  For when we need to access public structure
+        QDANode *m_node;                        //  This pointer can be updated
+        QDANode *m_linkNode;                    //  This pointer must point to QDA Node structure
+                                                //  that has the present annotation in its list.
+        uint m_pageNum;                         //  Unlike m_page, m_pageNum is always assigned.
+        Document *m_doc;
 };
 
-//  Static table of box tag annotations to help rebuild structures on file load.
-QHash<QString, BoxTagAnnotation *> BoxTagAnnotation::bTagAnnotationTable;
+#undef head_d
+#define head_d (static_cast <BoxTagAnnotationPrivate *> (d_ptr)->m_head ? static_cast <BoxTagAnnotationPrivate *> ( static_cast <BoxTagAnnotationPrivate *> (d_ptr)->m_head->d_ptr ) : static_cast <BoxTagAnnotationPrivate *> (d_ptr))
 
 BoxTagAnnotation::BoxTagAnnotation( const NormalizedRect *rect )
     : Annotation( *new BoxTagAnnotationPrivate() )
@@ -3595,42 +3605,30 @@ BoxTagAnnotation::BoxTagAnnotation( BoxTagAnnotation * head, const NormalizedRec
     }
 }
 
-void BoxTagAnnotation::appendAnnotation()
-{
-    Q_D( BoxTagAnnotation );
-
-    if ( d->m_head )
-    {
-        BoxTagAnnotation * tTagIt = d->m_head;
-        BoxTagAnnotationPrivate *tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
-        //  Second part of condition shouldn't ever happen, but including it will prevent looping
-        //  in case of data inconsistency.
-        while ( tTagPIt->m_next && tTagPIt->m_next != this )
-        {
-            tTagIt = tTagPIt->m_next;
-            tTagPIt = static_cast <BoxTagAnnotationPrivate *> (tTagIt->d_ptr);
-        }
-        if ( tTagIt != this )
-            tTagPIt->m_next = this;
-    }
-}
-
 BoxTagAnnotation::BoxTagAnnotation( const QDomNode & node )
     : Annotation( *new BoxTagAnnotationPrivate(), node )
 {
     Q_D( BoxTagAnnotation );
 
-    this->appendAnnotation();
+    d->m_parent = this;     //  JS: Can we use Q_Q to avoid need for m_parent?
+}
 
-    //  Save this tag for future lookup
-    bTagAnnotationTable[d->m_uniqueName] = this;
+BoxTagAnnotation::BoxTagAnnotation( Document *doc, const QDomNode & node )
+    : Annotation( *new BoxTagAnnotationPrivate() )
+{
+    Q_D( BoxTagAnnotation );
+
+    d->m_doc = doc;
+    d->m_parent = this;
+    d->setAnnotationProperties( node );
 }
 
 BoxTagAnnotation::~BoxTagAnnotation()
 {
     Q_D( BoxTagAnnotation );
 
-    bTagAnnotationTable[d->m_uniqueName] = 0;
+    if ( d->m_linkNode )
+        d->m_linkNode->removeAnnotation( this );
 }
 
 BoxTagAnnotation::Annotation * BoxTagAnnotation::head()
@@ -3649,62 +3647,76 @@ BoxTagAnnotation::Annotation * BoxTagAnnotation::next() const
 
 void BoxTagAnnotation::setAnnotationProperties( const QDomNode& node )
 {
-    //  Save and restore the next annotation field.
+    if ( static_cast<TextTagAnnotationPrivate *>(d_ptr)->m_head )
+        qCWarning(OkularCoreDebug) << "BoxTagAnnotation::setAnnotationProperties called with non-head annotation: " << static_cast<TextTagAnnotationPrivate *>(d_ptr)->m_uniqueName;
+
+    //  Save and restore private fields that will be erased.
     BoxTagAnnotation * nextAnn = static_cast<BoxTagAnnotation *>( this->next() );
+    //  Remove annotation from current QDA node
+    if ( head_d->m_linkNode )
+        head_d->m_linkNode->removeAnnotation( this );
+
     Annotation::setAnnotationProperties( node );
 
+    //  Need to delay this until after call to setAnnotationProperties - Can this be improved?
     Q_D( BoxTagAnnotation );
 
+    d->m_parent = this;
     d->m_next = nextAnn;
 
-    this->appendAnnotation();
+    //  Add annotation to QDA node.  This will update our m_linkNode field.
+    d->m_node->addAnnotation( this );
 }
 
-#undef head_d
-#define head_d (d->m_head ? static_cast <BoxTagAnnotationPrivate *> ( d->m_head->d_ptr ) : d)
 
 void BoxTagAnnotation::setNode( QDANode *node )
 {
     Q_D( BoxTagAnnotation );
 
-    if ( head_d->m_node )
-        head_d->m_node->removeAnnotation( this );
+    if ( d->m_head )
+        qCWarning(OkularCoreDebug) << "BoxTagAnnotation::setNode called with non-head annotation";
 
-    head_d->m_node = node;
+    d->m_node = node;
+    this->style().setColor( node->color() );
+    this->style().setOpacity( 0.5 );
+}
 
-    if ( head_d->m_node )
-        head_d->m_node->addAnnotation( this );
+void BoxTagAnnotation::setPrevNode( QDANode *node )
+{
+    Q_D( BoxTagAnnotation );
+
+    d->m_linkNode = node;
 }
 
 QDANode * BoxTagAnnotation::node() const
 {
     Q_D( const BoxTagAnnotation );
 
-    return d->m_node ? d->m_node : head_d->m_node;
+    return head_d->m_node;
 }
 
 QString BoxTagAnnotation::author() const
 {
     Q_D( const BoxTagAnnotation );
-    return !d->m_author.isNull() ? d->m_author : head_d->m_author;
+    return head_d->m_author;
 }
 
 QString BoxTagAnnotation::contents() const
 {
     Q_D( const BoxTagAnnotation );
-    return !d->m_contents.isNull() ? d->m_contents : head_d->m_contents;
+    return head_d->m_contents;
 }
 
 QDateTime BoxTagAnnotation::modificationDate() const
 {
     Q_D( const BoxTagAnnotation );
-    return !d->m_modifyDate.isNull() ? d->m_modifyDate : head_d->m_modifyDate;
+    return head_d->m_modifyDate;
 }
 
 QDateTime BoxTagAnnotation::creationDate() const
 {
     Q_D( const BoxTagAnnotation );
-    return !d->m_creationDate.isNull() ? d->m_creationDate : head_d->m_creationDate;
+    return head_d->m_creationDate;
 }
 
 int BoxTagAnnotation::flags() const
@@ -3713,27 +3725,26 @@ int BoxTagAnnotation::flags() const
     return head_d->m_flags;
 }
 
+Annotation::Style & BoxTagAnnotation::style()
+{
+    return head_d->m_style;
+}
+
+const Annotation::Style & BoxTagAnnotation::style() const
+{
+    return head_d->m_style;
+}
+
 Annotation::SubType BoxTagAnnotation::subType() const
 {
     return ABTag;
 }
 
-void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
+uint TextTagAnnotation::pageNum() const
 {
-    Q_D( const BoxTagAnnotation );
+    Q_D( const TextTagAnnotation );
 
-    // recurse to parent objects storing properties
-    Annotation::store( node, document );
-
-    // create [boxtag] element
-    QDomElement TTagElement = document.createElement( QStringLiteral("boxtag") );
-    node.appendChild( TTagElement );
-
-    // store the optional attributes
-    if ( d->m_head )
-        TTagElement.setAttribute( QStringLiteral("head"), d->m_head->uniqueName() );
-    if ( d->m_node )
-        TTagElement.setAttribute( QStringLiteral("node"), d->m_node->uniqueName() );
+    return d->m_pageNum;
 }
 
 QPixmap BoxTagAnnotation::pixmap() const
@@ -3772,9 +3783,37 @@ QPixmap BoxTagAnnotation::pixmap() const
     return QPixmap();
 }
 
+void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
+{
+    Q_D( const BoxTagAnnotation );
+
+    if ( d->m_head )
+        qCWarning(OkularCoreDebug) << "BoxTagAnnotation::store called with non-head annotation: " << d->m_uniqueName;
+
+    // recurse to parent objects storing properties
+    Annotation::store( node, document );
+
+    // create [boxtag] element
+    QDomElement TTagElement = document.createElement( QStringLiteral("boxref") );
+    node.appendChild( TTagElement );
+
+    //  TBC
+}
+
+
 void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
     Okular::AnnotationPrivate::setAnnotationProperties(node);
+
+    //  m_doc can be set either when loading the annotation, or from the attached
+    //  structure.
+    if (! m_doc )
+    {
+        if ( m_page)
+            m_doc = m_page->m_doc->m_parent;
+        else
+            return;
+    }
 
     // loop through the whole children looking for a 'text' element
     QDomNode subNode = node.firstChild();
@@ -3782,18 +3821,20 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
     {
         QDomElement e = subNode.toElement();
         subNode = subNode.nextSibling();
-        if ( e.tagName() != QLatin1String("boxtag") )
-            continue;
 
-        // parse the attributes
-        if ( e.hasAttribute( QStringLiteral("node") ) )
+        if ( e.tagName() == "base"
+        &&   e.hasAttribute( QStringLiteral("node") )
+        &&   ! m_node )
+        {
             m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
-        if ( e.hasAttribute( QStringLiteral("head") ) )
-            m_head = BoxTagAnnotation::bTagAnnotationTable[ e.attribute( "head" ) ];
+            if (! m_node)
+                m_node = new QDANode();
+        }
 
-        if (! m_node && ! m_head )
-            m_node = new QDANode ();
-
+        if ( e.tagName() == "boxref" )
+        {
+            // TBC
+        }
         // loading complete
         break;
     }
