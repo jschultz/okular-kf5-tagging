@@ -4,7 +4,7 @@ add_definitions(${QT_DEFINITIONS})
 include_directories(
    ${CMAKE_CURRENT_SOURCE_DIR}
    ${CMAKE_BINARY_DIR}
-   
+
    ${QIMAGEBLITZ_INCLUDES}
 )
 
@@ -13,6 +13,7 @@ set(okular_SRCS
     ${CMAKE_SOURCE_DIR}/ui/guiutils.cpp
     ${CMAKE_SOURCE_DIR}/ui/tocmodel.cpp
     ${CMAKE_SOURCE_DIR}/ui/pagepainter.cpp
+    ${CMAKE_SOURCE_DIR}/core/debug.cpp
     pageitem.cpp
     documentitem.cpp
     thumbnailitem.cpp

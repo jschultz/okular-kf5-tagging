@@ -16,14 +16,12 @@
 #include <qpixmap.h>
 #include <qvarlengtharray.h>
 #include <kiconloader.h>
-#include <QtCore/QDebug>
 #include <QApplication>
+#include <QtCore/QDebug>
 // TODO KF5 #include <qimageblitz.h>
 
 // system includes
 #include <math.h>
-
-#include "core/debug_p.h"
 
 // local includes
 #include "core/area.h"
@@ -36,6 +34,7 @@
 #include "core/observer.h"
 #include "core/tile.h"
 #include "settings_core.h"
+#include "debug_p.h"
 
 Q_GLOBAL_STATIC_WITH_ARGS( QPixmap, busyPixmap, ( KIconLoader::global()->loadIcon("okular", KIconLoader::NoGroup, 32, KIconLoader::DefaultState, QStringList(), 0, true) ) )
 
@@ -815,12 +814,13 @@ void PagePainter::paintCroppedPageOnPainter( QPainter * destPainter, const Okula
                     // get tagging boundary and drawn rect
                     QRect tagBoundary = rect.geometry( scaledWidth, scaledHeight ).translated( -scaledCrop.topLeft() );
                     QRect tagRect = tagBoundary.intersect( limits );
+                    qCDebug(OkularCoreDebug) << "C: " << a->uniqueName() << " width:" << tagRect.width() << " height:" << tagRect.height();
 
                     QImage * scaledImage = new QImage (tagRect.width(), tagRect.height(),
                                                         QImage::Format_ARGB32 );
 
                     scaledImage->fill ( tTag->style().color() );
-                    
+
                     changeImageAlpha( *scaledImage, opacity );
                     mixedPainter->drawImage( tagRect.topLeft(), *scaledImage );
                 }

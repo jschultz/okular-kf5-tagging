@@ -960,7 +960,6 @@ void AnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         m_modifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
     if ( e.hasAttribute( QStringLiteral("creationDate") ) )
         m_creationDate = QDateTime::fromString( e.attribute(QStringLiteral("creationDate")), Qt::ISODate );
-
     // parse -other- attributes
     if ( e.hasAttribute( QStringLiteral("flags") ) )
         m_flags = e.attribute( QStringLiteral("flags") ).toInt();
@@ -3134,21 +3133,6 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         {
         }
 
-        TextTagAnnotationPrivate( Document *doc )
-            : AnnotationPrivate(),
-              m_head( 0 ),
-              m_next( 0 ),
-              m_parent( 0 ),
-              m_node( 0 ),
-              m_prevNode( 0 ),
-              m_pageNum( 0 ),
-              m_doc( doc ),
-              m_ref( { 0, 0 } ),
-              m_textArea( 0 ),
-              m_transformedTextArea( 0 )
-        {
-        }
-
         ~TextTagAnnotationPrivate()
         {
             delete m_textArea;
@@ -3223,11 +3207,22 @@ TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
 }
 
 TextTagAnnotation::TextTagAnnotation( Document *doc, const QDomNode & node )
-    : Annotation( *new TextTagAnnotationPrivate( doc ), node )
+    : Annotation( *new TextTagAnnotationPrivate() )
 {
     Q_D( TextTagAnnotation );
 
+    d->m_doc = doc;
     d->m_parent = this;
+    d->setAnnotationProperties( node );
+
+    d->m_textArea = doc->page( d->m_pageNum )->TextReferenceArea( d->m_ref );
+    NormalizedRect rect = d->m_textArea->first();
+    int end = d->m_textArea->count();
+    for (int i = 1; i < end; i++ )
+    {
+        rect |= d->m_textArea->at( i );
+    }
+    d->m_boundary = rect;
 }
 
 TextTagAnnotation::~TextTagAnnotation()
@@ -3271,18 +3266,8 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     d->m_parent = this;
     d->m_next = nextAnn;
 
-    //  Add annotation to new QDA node.
+    //  Add annotation to QDA node.
     d->m_node->addAnnotation( this );
-
-    //  Since the TextTagAnnotationPrivate record has been recreated, we need to
-    //  recalculate the text area fields.
-    d->m_textArea = d->m_page->m_page->TextReferenceArea( d->m_ref );
-    d->m_transformedTextArea = new RegularAreaRect;
-    int end = d->m_textArea->count();
-    for (int i = 0; i < end; i++ )
-        d->m_transformedTextArea->append (d->m_textArea->at(i));
-
-    d->m_transformedTextArea->transform( d->m_page->rotationMatrix() );
 }
 
 void TextTagAnnotation::setNode( QDANode *node )
@@ -3463,7 +3448,12 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
     //  This is a pretty awful hack to restore the m_doc field via the m_page field
     if (! m_doc )
-        m_doc = m_page->m_doc->m_parent;
+    {
+        if ( m_page)
+            m_doc = m_page->m_doc->m_parent;
+        else
+            return;
+    }
 
     // loop through the whole children looking for a 'text' element
     QDomNode subNode = node.firstChild();
@@ -3505,6 +3495,19 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
             m_pageNum = pageNum;
             m_ref = { pageOffset, pageLength };
+
+            //  Recreate the text reference area and boundaries.
+            m_textArea = page->TextReferenceArea( m_ref );
+            m_transformedTextArea = new RegularAreaRect;
+            m_boundary = m_textArea->first();
+            int end = m_textArea->count();
+            for (int i = 0; i < end; i++ )
+            {
+                NormalizedRect rect = m_textArea->at(i);
+                m_transformedTextArea->append (rect);
+                m_boundary |= rect;
+            }
+            m_transformedBoundary = m_boundary;
 
             while ( nextPage && remainingLength )
             {

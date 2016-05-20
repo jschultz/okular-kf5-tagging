@@ -153,7 +153,7 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
                     Annotation *annIt = annotation;
                     while ( annIt )
                     {
-                        doc_p->performAddPageAnnotation(annotation->pageNum(), annotation);
+                        doc_p->performAddPageAnnotation(annIt->pageNum(), annIt);
                         annIt = annIt->next();
                     }
                     qCDebug(OkularCoreDebug) << "restored annot:" << annotation->uniqueName();

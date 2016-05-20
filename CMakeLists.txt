@@ -246,6 +246,7 @@ set(okularpart_SRCS
    ${okularpart_conf_SRCS}
    part.cpp
    extensions.cpp
+   core/debug.cpp
    ui/embeddedfilesdialog.cpp
    ui/annotwindow.cpp
    ui/annotationmodel.cpp
