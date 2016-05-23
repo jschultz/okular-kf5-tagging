@@ -157,7 +157,12 @@ class OKULARCORE_EXPORT Page
         /**
          * Returns the text offset of the page relative to the document.
          */
-        uint offset() const;
+        uint textOffset() const;
+
+        /**
+         * Returns the vertical offset of the page relative to the document.
+         */
+        double verticalOffset() const;
 
         /**
          * Returns whether the page has an object rect which includes the point (@p x, @p y)

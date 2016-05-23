@@ -67,7 +67,7 @@ static void deleteObjectRects( QLinkedList< ObjectRect * >& rects, const QSet<Ob
 
 PagePrivate::PagePrivate( Page *page, uint n, double w, double h, Rotation o )
     : m_page( page ), m_number( n ), m_orientation( o ),
-      m_width( w ), m_height( h ), m_doc( 0 ), m_boundingBox( 0, 0, 1, 1 ),
+      m_width( w ), m_height( h ), m_offset( -1 ), m_doc( 0 ), m_boundingBox( 0, 0, 1, 1 ),
       m_rotation( Rotation0 ),
       m_text( 0 ), m_transition( 0 ), m_textSelections( 0 ),
       m_openingAction( 0 ), m_closingAction( 0 ), m_duration( -1 ),
@@ -235,12 +235,32 @@ Document *Page::document() const
     return d->m_doc->m_parent;
 }
 
-uint Page::offset() const
+uint Page::textOffset() const
 {
     if (! d->m_text )
         d->m_doc->m_parent->requestTextPage( d->m_page->number() );
 
     return d->m_text->offset();
+}
+
+double Page::verticalOffset() const
+{
+    //  This is all a bit silly, would be better simply to calcuate vertical offset when
+    //  page if first populated.
+    if ( d->m_offset == -1 )
+    {
+        Document *doc = d->m_doc->m_parent;
+        uint thisPageNum = this->number();
+        double offset = 0;
+        for ( uint pageIt = 0; pageIt < thisPageNum; ++pageIt )
+        {
+            const Page *page = doc->page( pageIt );
+            page->d->m_offset = offset;
+            offset += page->height();
+        }
+        d->m_offset = offset;
+    }
+    return d->m_offset;
 }
 
 RegularAreaRect * Page::wordAt( const NormalizedPoint &p, QString *word ) const

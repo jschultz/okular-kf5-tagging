@@ -221,16 +221,34 @@ class OKULARCORE_EXPORT Annotation
         virtual ~Annotation();
 
         /**
+         * For internal use only. JS: Clean this up
+         */
+        virtual QString textSection() const;
+
+        /**
+         * Returns the text content of the text tag annotation.
+         */
+        QString text() const;
+
+        /**
          * Returns the head of the annotation. This is only meaningful for tag
          * annotations, which may be spread over multiple pages.
          */
-        virtual Annotation *head();
+        virtual const Annotation *head() const;
+        virtual       Annotation *head();
 
         /**
-         * Returns the next annotatuib in a group. This is only meaningful for tag
+         * Returns the next annotation in a group. This is only meaningful for tag
          * annotations, which may be spread over multiple pages.
          */
         virtual Annotation *next() const;
+
+        /**
+         * Sets the next annotation field in the annotation. This is really an
+         * internal function so shouldn't be in the public header. Need to work
+         * out how to do polymorphic functions outside the header file.
+         */
+        virtual void setNext( Annotation *next );
 
         /**
          * Sets the previous node of the tagging, does nothing for other annotiation
@@ -697,6 +715,11 @@ class OKULARCORE_EXPORT Annotation
         virtual void store( QDomNode & node, QDomDocument & document ) const;
 
         /**
+         * For tag annotation, stores a single annotation section. Called by Annotation::store()
+         */
+        virtual void storeSection( QDomNode & node, QDomDocument & document ) const;
+
+        /**
          * Retrieve the QDomNode representing this annotation's properties
 
          * @since 0.17 (KDE 4.11)
@@ -897,6 +920,7 @@ class OKULARCORE_EXPORT TextAnnotation : public Annotation
          * Stores the text annotation as xml in @p document under the given parent @p node.
          */
         void store( QDomNode &node, QDomDocument &document ) const;
+
 
     private:
         Q_DECLARE_PRIVATE( TextAnnotation )
@@ -1770,9 +1794,9 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         TextTagAnnotation( const Page * page, TextReference ref );
 
         /**
-         * Creates a new text tagging that extends an existing text tagging to a new page
+         * Creates a new text tagging that extends an existing tagging to a new page
          */
-        TextTagAnnotation( TextTagAnnotation * head, const Page * page, TextReference ref );
+        TextTagAnnotation( Annotation * head, const Page * page, TextReference ref );
 
         /**
          * Creates a new text tagging from the xml @p description. This constructor is only
@@ -1794,7 +1818,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          */
         ~TextTagAnnotation();
 
-        virtual void setAnnotationProperties( const QDomNode& node );
+        void setAnnotationProperties( const QDomNode& node );
 
         /**
          * Returns the sub type of the text tagging.
@@ -1802,29 +1826,45 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         SubType subType() const;
 
         /**
+         * Stores the annotation as xml in @p document under the given parent @p node.
+         */
+        void store( QDomNode & node, QDomDocument & document ) const;
+
+        /**
+         * For tag annotation, stores a single annotation section. Called by Annotation::store()
+         */
+        void storeSection( QDomNode & node, QDomDocument & document ) const;
+
+        /**
          * Returns the page of the tag annotation. Unimplemented for other annotation types.
          */
-        virtual uint pageNum() const;
+        uint pageNum() const;
 
         /**
          * Returns a reference to the style object of the annotation.
          */
-        virtual Style & style();
+        Style & style();
 
         /**
          * Returns a const reference to the style object of the annotation.
          */
-        virtual const Style & style() const;
+        const Style & style() const;
+
+        /**
+         * For internal use only. JS: Clean this up
+         */
+        QString textSection() const;
 
         /**
          * Returns the head (start) of the tagging
          */
-        virtual Annotation *head();
+        const Annotation *head() const;
+              Annotation *head();
 
         /**
          * Returns the next tagging in a group.
          */
-        virtual Annotation *next() const;
+        Annotation *next() const;
 
         /**
          * Assigns the node of the text tagging
@@ -1834,38 +1874,38 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         /**
          * Sets the previous node of the text tagging
          */
-        virtual void setPrevNode ( QDANode *node );
+        void setPrevNode ( QDANode *node );
 
         /**
          * Returns the node of the tagging
          */
-        virtual QDANode *node() const;
+        QDANode *node() const;
 
         /**
          * Returns the author of the annotation.
          */
-        virtual QString author() const;
+        QString author() const;
 
         /**
          * Returns the contents of the annotation.
          */
-        virtual QString contents() const;
+        QString contents() const;
 
         /**
          * Returns the last modification date of the annotation.
          */
-        virtual QDateTime modificationDate() const;
+        QDateTime modificationDate() const;
 
         /**
          * Returns the creation date of the annotation.
          */
-        virtual QDateTime creationDate() const;
+        QDateTime creationDate() const;
 
         /**
          * Returns the flags of the annotation.
          * @see @ref Flag
          */
-        virtual int flags() const;
+        int flags() const;
 
         /**
          * Returns the area occupied by the tagging
@@ -1877,19 +1917,12 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
          */
         TextReference reference() const;
 
-        /**
-         * Stores the text tag annotation as xml in @p document under the given parent @p node.
-         */
-        void store( QDomNode &node, QDomDocument &document ) const;
-
-        /**
-         * Returns the text content of the text tag annotation.
-         */
-        QString text() const;
-
     private:
         Q_DECLARE_PRIVATE( TextTagAnnotation )
         Q_DISABLE_COPY( TextTagAnnotation )
+
+        void setNext( Annotation *next );
+
 };
 
 class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
@@ -1901,9 +1934,9 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         BoxTagAnnotation( const NormalizedRect *rect );
 
         /**
-         * Creates a new box tagging that extends an existing box tagging to a new page
+         * Creates a new box tagging that extends an existing tagging to a new page
          */
-        BoxTagAnnotation( BoxTagAnnotation * head, const NormalizedRect *rect );
+        BoxTagAnnotation( Annotation * head, const NormalizedRect *rect );
 
         /**
          * Creates a new text tagging from the xml @p description. This constructor is only
@@ -1925,7 +1958,7 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          */
         ~BoxTagAnnotation();
 
-        virtual void setAnnotationProperties( const QDomNode& node );
+        void setAnnotationProperties( const QDomNode& node );
 
         /**
          * Returns the sub type of the box tagging.
@@ -1933,14 +1966,30 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         SubType subType() const;
 
         /**
+         * Returns the page of the tag annotation. Unimplemented for other annotation types.
+         */
+        uint pageNum() const;
+
+        /**
+         * Returns a reference to the style object of the annotation.
+         */
+        Style & style();
+
+        /**
+         * Returns a const reference to the style object of the annotation.
+         */
+        const Style & style() const;
+
+        /**
          * Returns the head (start) of the tagging
          */
-        virtual Annotation *head();
+        const Annotation *head() const;
+              Annotation *head();
 
         /**
          * Returns the next tagging in a group.
          */
-        virtual Annotation *next() const;
+        Annotation *next() const;
 
         /**
          * Assigns the node of the box tagging
@@ -1950,43 +1999,53 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Sets the previous node of the box tagging
          */
-       virtual void setPrevNode ( QDANode *node );
+        void setPrevNode ( QDANode *node );
 
         /**
          * Returns the node of the tagging
          */
-        virtual QDANode *node() const;
+        QDANode *node() const;
 
         /**
          * Returns the author of the annotation.
          */
-        virtual QString author() const;
+        QString author() const;
 
         /**
          * Returns the contents of the annotation.
          */
-        virtual QString contents() const;
+        QString contents() const;
 
         /**
          * Returns the last modification date of the annotation.
          */
-        virtual QDateTime modificationDate() const;
+        QDateTime modificationDate() const;
 
         /**
          * Returns the creation date of the annotation.
          */
-        virtual QDateTime creationDate() const;
+        QDateTime creationDate() const;
 
         /**
          * Returns the flags of the annotation.
          * @see @ref Flag
          */
-        virtual int flags() const;
+        int flags() const;
 
         /**
-         * Stores the box tag annotation as xml in @p document under the given parent @p node.
+         * Stores the annotation as xml in @p document under the given parent @p node.
          */
-        void store( QDomNode &node, QDomDocument &document ) const;
+        void store( QDomNode & node, QDomDocument & document ) const;
+
+        /**
+         * For tag annotation, stores a single annotation section. Called by Annotation::store()
+         */
+        void storeSection( QDomNode & node, QDomDocument & document ) const;
+
+        /**
+         * Returns the text content of the box tag annotation.
+         */
+        QString text() const;
 
         /**
          * Returns the box tag annotation as a pixmap.
@@ -1997,7 +2056,7 @@ private:
         Q_DECLARE_PRIVATE( BoxTagAnnotation )
         Q_DISABLE_COPY( BoxTagAnnotation )
 
-        void appendAnnotation();
+        void setNext( Annotation *next );
 
 protected:
         //  JS: A bit awkward but we need a table to lookup text tags by unique name during loading.

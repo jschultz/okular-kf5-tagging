@@ -809,6 +809,38 @@ void PageView::displayMessage( const QString & message, const QString & details,
     d->messageWindow->display( message, details, icon, duration );
 }
 
+QString PageView::enclosedText( QRect rectArea, QVector< PageViewItem * > & items )
+{
+    QString ret;
+    // grab text in selection by extracting it from all intersected pages
+    const Okular::Page * okularPage=0;
+    QVector< PageViewItem * >::const_iterator iIt = d->items.constBegin(), iEnd = d->items.constEnd();
+    for ( ; iIt != iEnd; ++iIt )
+    {
+        PageViewItem * item = *iIt;
+        if ( !item->isVisible() )
+            continue;
+
+        const QRect & itemRect = item->croppedGeometry();
+        if ( rectArea.intersects( itemRect ) )
+        {
+            // request the textpage if there isn't one
+            okularPage= item->page();
+            qWarning() << "checking if page" << item->pageNumber() << "has text:" << okularPage->hasTextPage();
+            if ( !okularPage->hasTextPage() )
+                d->document->requestTextPage( okularPage->number() );
+            // grab text in the rect that intersects itemRect
+            QRect relativeRect = rectArea.intersect( itemRect );
+            relativeRect.translate( -item->uncroppedGeometry().topLeft() );
+            Okular::RegularAreaRect rects;
+            rects.append( Okular::NormalizedRect( relativeRect, item->uncroppedWidth(), item->uncroppedHeight() ) );
+            ret += okularPage->text( &rects, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+        }
+    }
+    return ret;
+}
+
+
 void PageView::reparseConfig()
 {
     // set the scroll bars policies
@@ -2746,33 +2778,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
             // if we support text generation
             QString selectedText;
             if (d->document->supportsSearching())
-            {
-                // grab text in selection by extracting it from all intersected pages
-                const Okular::Page * okularPage=0;
-                QVector< PageViewItem * >::const_iterator iIt = d->items.constBegin(), iEnd = d->items.constEnd();
-                for ( ; iIt != iEnd; ++iIt )
-                {
-                    PageViewItem * item = *iIt;
-                    if ( !item->isVisible() )
-                        continue;
-
-                    const QRect & itemRect = item->croppedGeometry();
-                    if ( selectionRect.intersects( itemRect ) )
-                    {
-                        // request the textpage if there isn't one
-                        okularPage= item->page();
-                        qWarning() << "checking if page" << item->pageNumber() << "has text:" << okularPage->hasTextPage();
-                        if ( !okularPage->hasTextPage() )
-                            d->document->requestTextPage( okularPage->number() );
-                        // grab text in the rect that intersects itemRect
-                        QRect relativeRect = selectionRect.intersect( itemRect );
-                        relativeRect.translate( -item->uncroppedGeometry().topLeft() );
-                        Okular::RegularAreaRect rects;
-                        rects.append( Okular::NormalizedRect( relativeRect, item->uncroppedWidth(), item->uncroppedHeight() ) );
-                        selectedText += okularPage->text( &rects, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
-                    }
-                }
-            }
+                selectedText = enclosedText( selectionRect, d->items );
 
             // popup that ask to copy:text and copy/save:image
             QMenu menu( this );
