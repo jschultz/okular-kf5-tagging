@@ -165,27 +165,36 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
             annElement = annElement.nextSiblingElement( QStringLiteral("annotation") );
         }
 
+        QDomElement attrElement = e.firstChildElement( QStringLiteral("attribute") );
+        while (! attrElement.isNull() )
+        {
+            QString attrName  = attrElement.attribute(QStringLiteral("name"));
+            QString attrValue = attrElement.attribute(QStringLiteral("value"));
+            if (! attrName.isNull() && ! attrValue.isNull() )
+                qdaNode->attributes[ attrName ] = attrValue;
+
+            attrElement = attrElement.nextSiblingElement( QStringLiteral("attribute") );
+        }
+
         e = e.nextSiblingElement( QStringLiteral("node") );
     }
 }
 
 QDANode::QDANode()
+    : QDANode( "okular-" + QUuid::createUuid().toString() )
 {
-    QString uniqueName = "okular-" + QUuid::createUuid().toString();
-
-    m_uniqueName = uniqueName;
-    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
-    m_annotations = QList<Annotation *> ();
-
-    QDANodeUtils::QDANodes.append(this);
 }
 
 QDANode::QDANode( QString uniqueName )
+    : attributes ( QHash< QString, QString>() ),
+      m_uniqueName( uniqueName ),
+      m_name ( QString() ),
+      m_color ( QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ] ),
+      m_author ( QString() ),
+      m_creationDate (),
+      m_modifyDate (),
+      m_annotations( QList<Annotation *> () )
 {
-    m_uniqueName = uniqueName;
-    m_color = QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ];
-    m_annotations = QList<Annotation *> ();
-
     QDANodeUtils::QDANodes.append(this);
 }
 
@@ -208,6 +217,15 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
         e.setAttribute( QStringLiteral("modifyDate"), this->m_modifyDate.toString(Qt::ISODate) );
     if ( this->m_creationDate.isValid() )
         e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
+
+    QHashIterator<QString, QString> attrIt( this->attributes );
+    while (attrIt.hasNext())
+    {
+        QDomElement attrElement = document.createElement( QStringLiteral("attribute") );
+        e.appendChild( attrElement );
+        attrElement.setAttribute( QStringLiteral("name"),  attrIt.key() );
+        attrElement.setAttribute( QStringLiteral("value"), attrIt.value() );
+    }
 
     QList< Annotation * >::const_iterator annIt = m_annotations.constBegin(), annEnd = m_annotations.constEnd();
     for ( ; annIt != annEnd; ++annIt )

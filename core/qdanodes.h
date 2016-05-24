@@ -74,6 +74,9 @@ class OKULARCORE_EXPORT QDANode
         void addAnnotation( Annotation *ann );
         void removeAnnotation( Annotation *ann );
 
+        //  JS: Should use methods?
+        QHash< QString, QString> attributes;
+
     protected:
         QString m_uniqueName;
         QString m_name;

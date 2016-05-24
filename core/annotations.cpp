@@ -3649,7 +3649,6 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
               m_linkNode( 0 ),
               m_pageNum( 0 ),
               m_doc( 0 )
-//              m_ref( { 0, 0 } )
         {
         }
 
@@ -3662,8 +3661,6 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
                                                 //  that has the present annotation in its list.
         uint m_pageNum;                         //  Unlike m_page, m_pageNum is always assigned.
         Document *m_doc;
-
-//         TextReference m_ref;
 
     private:
         Q_DECLARE_PUBLIC( BoxTagAnnotation )
@@ -3933,13 +3930,6 @@ QPixmap BoxTagAnnotation::pixmap() const
 //     }
     return QPixmap();
 }
-
-// TextReference BoxTagAnnotation::reference() const
-// {
-//     Q_D( const BoxTagAnnotation );
-//
-//     return d->m_ref;
-// }
 
 void BoxTagAnnotation::storeSection( QDomNode & node, QDomDocument & document ) const
 {

@@ -21,6 +21,7 @@
 #include <kfontrequester.h>
 #include <QIcon>
 #include <kiconloader.h>
+#include <klineedit.h>
 #include <KLocalizedString>
 #include <QDebug>
 #include <QMimeDatabase>
@@ -784,6 +785,12 @@ TextTagAnnotationWidget::TextTagAnnotationWidget( Okular::Annotation * ann )
     m_tTagAnn = static_cast< Okular::TextTagAnnotation * >( ann );
 }
 
+TextTagAnnotationWidget::~TextTagAnnotationWidget()
+{
+    delete m_attrName;
+    delete m_attrValue;
+}
+
 QWidget * TextTagAnnotationWidget::createExtraWidget()
 {
     QWidget * widget = new QWidget();
@@ -813,8 +820,25 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
         i++;
     }
 
+    int attrCount = m_tTagAnn->node()->attributes.count();
+    m_attrName = new QLineEdit *[ attrCount ];
+    m_attrValue = new QLineEdit *[ attrCount ];
+    QHashIterator<QString, QString> attrIt( m_tTagAnn->node()->attributes );
+    i = 0;
+    while (attrIt.hasNext())
+    {
+        m_attrName[i]  = new KLineEdit( attrIt.key(), widget );
+        m_attrValue[i] = new KLineEdit( attrIt.value(), widget );
+        i++;
+    }
+
     connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
     connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    for ( i = 0; i < m_tTagAnn->node()->attributes.count(); i++ )
+    {
+        connect( m_attrName [i], SIGNAL(currentAttrChanged(const QString &)), this, SIGNAL(dataChanged()) );
+        connect( m_attrValue[i], SIGNAL(currentAttrChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    }
 
     return widget;
 }

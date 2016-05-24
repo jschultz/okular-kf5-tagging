@@ -22,6 +22,7 @@ class QWidget;
 class KColorButton;
 class QSpinBox;
 class KFontRequester;
+class QLineEdit;
 class AnnotationWidget;
 
 class PixmapPreviewSelector
@@ -262,6 +263,9 @@ class TextTagAnnotationWidget
 public:
     explicit TextTagAnnotationWidget( Okular::Annotation * ann );
 
+    virtual ~TextTagAnnotationWidget();
+
+
     void applyChanges() Q_DECL_OVERRIDE;
 
 protected:
@@ -272,6 +276,7 @@ private:
     Okular::TextTagAnnotation * m_tTagAnn;
 
     QComboBox * m_QDANode;
+    QLineEdit **m_attrName, **m_attrValue;
 };
 
 class BoxTagAnnotationWidget
