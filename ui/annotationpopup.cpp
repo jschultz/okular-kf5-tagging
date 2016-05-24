@@ -211,18 +211,13 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
         } else if( actionType == saveId ) {
             Okular::EmbeddedFile *embeddedFile = embeddedFileFromAnnotation( pair.annotation );
             GuiUtils::saveEmbeddedFile( embeddedFile, mParent );
-        } else if( actionType == copyId ) {
-            if ( pair.annotation->subType() == Okular::Annotation::ATTag )
-            {
-                Okular::TextTagAnnotation * tTagAnn = static_cast< Okular::TextTagAnnotation * >( pair.annotation );
-                QString tagText = tTagAnn->text ();
-                QClipboard *cb = QApplication::clipboard();
-                cb->setText( tagText, QClipboard::Clipboard );
-                if ( cb->supportsSelection() )
-                    cb->setText( tagText, QClipboard::Selection );
-            }
-            if ( pair.annotation->subType() == Okular::Annotation::ABTag )
-            {
+        } else if( actionType == copyId )
+        {
+            QString tagText = pair.annotation->text ();
+            QClipboard *cb = QApplication::clipboard();
+            cb->setText( tagText, QClipboard::Clipboard );
+            if ( cb->supportsSelection() )
+                cb->setText( tagText, QClipboard::Selection );
                 //  JS: To be implemented. Below is former working hacked code.
 //                     const QVector< PageViewItem * > items = pageView->items();
 //
@@ -256,7 +251,6 @@ void AnnotationPopup::exec( PageView *pageView, const QPoint &point )
 //                         }
 //                     }
 //                     break;
-            }
 
         }
     }

@@ -584,6 +584,11 @@ QDANode * Annotation::node() const
     return 0;
 }
 
+TextReference Annotation::reference() const
+{
+    return { 0, 0 };
+}
+
 void Annotation::setPrevNode( QDANode *node )
 {
 }
@@ -3149,11 +3154,11 @@ void RichMediaAnnotation::setEmbeddedFile( EmbeddedFile *embeddedFile )
 class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
-        TextTagAnnotationPrivate()
+        TextTagAnnotationPrivate( TextTagAnnotation *q )
             : AnnotationPrivate(),
+              q_ptr( q ),
               m_head( 0 ),
               m_next( 0 ),
-              m_parent( 0 ),
               m_node( 0 ),
               m_linkNode( 0 ),
               m_pageNum( 0 ),
@@ -3180,7 +3185,6 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual double distanceSqr( double x, double y, double xScale, double yScale );
 
         Annotation *m_head, *m_next;            //  Structures to link multi-page annotations
-       TextTagAnnotation *m_parent;            //  For when we need to access public structure
         QDANode *m_node;                        //  This pointer can be updated
         QDANode *m_linkNode;                    //  This pointer must point to QDA Node structure
                                                 //  that has the present annotation in its list.
@@ -3191,14 +3195,17 @@ class Okular::TextTagAnnotationPrivate : public Okular::AnnotationPrivate
 
         RegularAreaRect * m_textArea;           //  The space on the page taken by the text.
         RegularAreaRect * m_transformedTextArea;
+
+    private:
+        Q_DECLARE_PUBLIC( TextTagAnnotation )
+        TextTagAnnotation * q_ptr;
 };
 
 TextTagAnnotation::TextTagAnnotation( const Page * page, TextReference ref )
-    : Annotation( *new TextTagAnnotationPrivate() )
+    : Annotation( *new TextTagAnnotationPrivate( this ) )
 {
     Q_D( TextTagAnnotation );
 
-    d->m_parent = this;
     d->m_ref = ref;
     d->m_textArea = page->TextReferenceArea( ref );
     NormalizedRect rect = d->m_textArea->first();
@@ -3230,20 +3237,16 @@ TextTagAnnotation::TextTagAnnotation( Annotation * head, const Page * page, Text
 }
 
 TextTagAnnotation::TextTagAnnotation( const QDomNode & node )
-    : Annotation( *new TextTagAnnotationPrivate(), node )
+    : Annotation( *new TextTagAnnotationPrivate( this ), node )
 {
-    Q_D( TextTagAnnotation );
-
-    d->m_parent = this;     //  JS: Can we use Q_Q to avoid need for m_parent?
 }
 
 TextTagAnnotation::TextTagAnnotation( Document *doc, const QDomNode & node )
-    : Annotation( *new TextTagAnnotationPrivate() )
+    : Annotation( *new TextTagAnnotationPrivate( this ) )
 {
     Q_D( TextTagAnnotation );
 
     d->m_doc = doc;
-    d->m_parent = this;
     d->setAnnotationProperties( node );
 
     d->m_textArea = doc->page( d->m_pageNum )->TextReferenceArea( d->m_ref );
@@ -3308,7 +3311,6 @@ void TextTagAnnotation::setAnnotationProperties( const QDomNode& node )
     //  Need to delay this until after call to setAnnotationProperties - Can this be improved?
     Q_D( TextTagAnnotation );
 
-    d->m_parent = this;
     d->m_next = nextAnn;
 
     //  Add annotation to QDA node.
@@ -3338,7 +3340,11 @@ QDANode * TextTagAnnotation::node() const
 {
     Q_D( const TextTagAnnotation );
 
-    return this->head()->node();
+    const Annotation *head = this->head();
+    if ( head == this )
+        return d->m_node;
+    else
+        return this->head()->node();
 }
 
 QString TextTagAnnotation::author() const
@@ -3513,6 +3519,10 @@ void TextTagAnnotationPrivate::resetTransformation()
 
 void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
+    Q_Q ( Annotation );
+
+    Annotation *headAnn = 0;
+
     Okular::AnnotationPrivate::setAnnotationProperties(node);
 
     //  m_doc can be set either when loading the annotation, or from the attached
@@ -3543,7 +3553,6 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
         if ( e.tagName() == "textref" )
         {
-            TextTagAnnotation *headAnn = this->m_parent;
 
             uint remainingLength = e.attribute( "l" ).toInt();
             uint pageOffset = e.attribute( "o" ).toInt();
@@ -3552,7 +3561,7 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
             uint pageNum = 0;
             const Page *page = m_doc->page( pageNum );
             const Page *nextPage = m_doc->page( pageNum + 1 );
-            while ( nextPage && nextPage->textOffset() < pageOffset )
+            while ( nextPage && nextPage->textOffset() <= pageOffset )
             {
                 pageNum++;
                 page = nextPage;
@@ -3563,21 +3572,31 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
             uint pageLength = nextPage ? std::min( remainingLength, nextPage->textOffset() - page->textOffset() - pageOffset ) : remainingLength;
             remainingLength -= pageLength;
 
-            m_pageNum = pageNum;
-            m_ref = { pageOffset, pageLength };
-
-            //  Recreate the text reference area and boundaries.
-            m_textArea = page->TextReferenceArea( m_ref );
-            m_transformedTextArea = new RegularAreaRect;
-            m_boundary = m_textArea->first();
-            int end = m_textArea->count();
-            for (int i = 0; i < end; i++ )
+            if (! headAnn )     //  ie we are building the head annotation object
             {
-                NormalizedRect rect = m_textArea->at(i);
-                m_transformedTextArea->append (rect);
-                m_boundary |= rect;
+                m_pageNum = pageNum;
+                m_ref = { pageOffset, pageLength };
+
+                //  Recreate the text reference area and boundaries.
+                m_textArea = page->TextReferenceArea( m_ref );
+                m_transformedTextArea = new RegularAreaRect;
+                m_boundary = m_textArea->first();
+                int end = m_textArea->count();
+                for (int i = 0; i < end; i++ )
+                {
+                    NormalizedRect rect = m_textArea->at(i);
+                    m_transformedTextArea->append (rect);
+                    m_boundary |= rect;
+                }
+                m_transformedBoundary = m_boundary;
+
+                headAnn = q;
             }
-            m_transformedBoundary = m_boundary;
+            else
+            {
+                TextTagAnnotation *ann = new TextTagAnnotation( headAnn, page, { pageOffset, pageLength } );
+                static_cast<TextTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
+            }
 
             while ( nextPage && remainingLength )
             {
@@ -3591,14 +3610,13 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
                 TextTagAnnotation *ann = new TextTagAnnotation( headAnn, page, { 0, pageLength } );
                 static_cast<TextTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
             }
-            break;
         }
     }
 }
 
 AnnotationPrivate* TextTagAnnotationPrivate::getNewAnnotationPrivate()
 {
-    return new TextTagAnnotationPrivate();
+    return new TextTagAnnotationPrivate( this->q_ptr );
 }
 
 double TextTagAnnotationPrivate::distanceSqr( double x, double y, double xScale, double yScale )
@@ -3622,16 +3640,16 @@ double TextTagAnnotationPrivate::distanceSqr( double x, double y, double xScale,
 class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
 {
     public:
-        BoxTagAnnotationPrivate()
+        BoxTagAnnotationPrivate( BoxTagAnnotation *q )
             : AnnotationPrivate(),
+              q_ptr( q ),
               m_head( 0 ),
               m_next( 0 ),
-              m_parent( 0 ),
               m_node( 0 ),
               m_linkNode( 0 ),
               m_pageNum( 0 ),
-              m_doc( 0 ),
-              m_ref( { 0, 0 } )
+              m_doc( 0 )
+//              m_ref( { 0, 0 } )
         {
         }
 
@@ -3639,18 +3657,21 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
         virtual AnnotationPrivate* getNewAnnotationPrivate();
 
         Annotation *m_head, *m_next;            //  Structures to link multi-page annotations
-       BoxTagAnnotation *m_parent;             //  For when we need to access public structure
         QDANode *m_node;                        //  This pointer can be updated
         QDANode *m_linkNode;                    //  This pointer must point to QDA Node structure
                                                 //  that has the present annotation in its list.
         uint m_pageNum;                         //  Unlike m_page, m_pageNum is always assigned.
         Document *m_doc;
 
-        TextReference m_ref;
+//         TextReference m_ref;
+
+    private:
+        Q_DECLARE_PUBLIC( BoxTagAnnotation )
+        BoxTagAnnotation * q_ptr;
 };
 
 BoxTagAnnotation::BoxTagAnnotation( const NormalizedRect *rect )
-    : Annotation( *new BoxTagAnnotationPrivate() )
+    : Annotation( *new BoxTagAnnotationPrivate( this ) )
 {
     Q_D( BoxTagAnnotation );
     d->m_boundary = *rect;
@@ -3676,20 +3697,16 @@ BoxTagAnnotation::BoxTagAnnotation( Annotation * head, const NormalizedRect *rec
 }
 
 BoxTagAnnotation::BoxTagAnnotation( const QDomNode & node )
-    : Annotation( *new BoxTagAnnotationPrivate(), node )
+    : Annotation( *new BoxTagAnnotationPrivate( this ), node )
 {
-    Q_D( BoxTagAnnotation );
-
-    d->m_parent = this;     //  JS: Can we use Q_Q to avoid need for m_parent?
 }
 
 BoxTagAnnotation::BoxTagAnnotation( Document *doc, const QDomNode & node )
-    : Annotation( *new BoxTagAnnotationPrivate() )
+    : Annotation( *new BoxTagAnnotationPrivate( this ) )
 {
     Q_D( BoxTagAnnotation );
 
     d->m_doc = doc;
-    d->m_parent = this;
     d->setAnnotationProperties( node );
 }
 
@@ -3745,7 +3762,6 @@ void BoxTagAnnotation::setAnnotationProperties( const QDomNode& node )
     //  Need to delay this until after call to setAnnotationProperties - Can this be improved?
     Q_D( BoxTagAnnotation );
 
-    d->m_parent = this;
     d->m_next = nextAnn;
 
     //  Add annotation to QDA node.  This will update our m_linkNode field.
@@ -3872,6 +3888,16 @@ uint BoxTagAnnotation::pageNum() const
     return d->m_pageNum;
 }
 
+QString BoxTagAnnotation::textSection() const
+{
+    Q_D( const BoxTagAnnotation );
+
+    RegularAreaRect *rect = new RegularAreaRect;
+    rect->append( d->m_transformedBoundary );
+
+    return d->m_page->m_page->text( rect, Okular::TextPage::CentralPixelTextAreaInclusionBehaviour );
+}
+
 QPixmap BoxTagAnnotation::pixmap() const
 {
 //     Q_D( const BoxTagAnnotation );
@@ -3907,6 +3933,13 @@ QPixmap BoxTagAnnotation::pixmap() const
 //     }
     return QPixmap();
 }
+
+// TextReference BoxTagAnnotation::reference() const
+// {
+//     Q_D( const BoxTagAnnotation );
+//
+//     return d->m_ref;
+// }
 
 void BoxTagAnnotation::storeSection( QDomNode & node, QDomDocument & document ) const
 {
@@ -3945,6 +3978,10 @@ void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 
 void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
+    Q_Q ( Annotation );
+
+    Annotation *headAnn = 0;
+
     Okular::AnnotationPrivate::setAnnotationProperties(node);
 
     //  m_doc can be set either when loading the annotation, or from the attached
@@ -3975,36 +4012,73 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
         if ( e.tagName() == "imageref" )
         {
+            double boundaryLeft = e.attribute( QStringLiteral("l") ).toDouble();
+            double boundaryRight = e.attribute( QStringLiteral("r") ).toDouble();
             double pageOffset = e.attribute( QStringLiteral("t") ).toDouble();
+            double remainingLength = e.attribute( QStringLiteral("b") ).toDouble() - pageOffset;
 
             //  Find page where annotation starts
             uint pageNum = 0;
             const Page *page = m_doc->page( pageNum );
             const Page *nextPage = m_doc->page( pageNum + 1 );
-            while ( nextPage && nextPage->verticalOffset() < pageOffset )
+            while ( nextPage && nextPage->verticalOffset() <= pageOffset )
             {
                 pageNum++;
                 page = nextPage;
                 nextPage = m_doc->page( pageNum + 1 );
             }
 
-            pageOffset -= page->textOffset();
+            pageOffset -= page->verticalOffset();
+            double pageLength = nextPage ? std::min( remainingLength, nextPage->verticalOffset() - page->verticalOffset() - pageOffset ) : remainingLength;
+            remainingLength -= pageLength;
 
+            if (! headAnn )     //  ie we are building the head annotation object
+            {
+                m_pageNum = pageNum;
+                m_boundary = NormalizedRect(
+                    boundaryLeft,
+                    pageOffset,
+                    boundaryRight,
+                    pageOffset + pageLength );
+                m_transformedBoundary = m_boundary;
 
-            m_boundary=NormalizedRect(e.attribute( QStringLiteral("l") ).toDouble(),
-                e.attribute( QStringLiteral("t") ).toDouble(),
-                e.attribute( QStringLiteral("r") ).toDouble(),
-                e.attribute( QStringLiteral("b") ).toDouble());
-            m_transformedBoundary = m_boundary;
+                headAnn = q;
+            }
+            else
+            {
+                NormalizedRect rect = NormalizedRect(
+                    boundaryLeft,
+                    pageOffset,
+                    boundaryRight,
+                    pageOffset + pageLength );
 
-            // TBC
+                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, &rect );
+                static_cast<BoxTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
+            }
+
+            while ( nextPage && remainingLength )
+            {
+                pageNum++;
+                page = nextPage;
+                nextPage = m_doc->page( pageNum + 1 );
+
+                uint pageLength = nextPage ? std::min( remainingLength, nextPage->verticalOffset() - page->verticalOffset() ) : remainingLength;
+                remainingLength -= pageLength;
+
+                NormalizedRect rect = NormalizedRect(
+                    boundaryLeft,
+                    0,
+                    boundaryRight,
+                    pageLength );
+
+                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, &rect );
+                static_cast<BoxTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
+            }
         }
-        // loading complete
-        break;
     }
 }
 
 AnnotationPrivate* BoxTagAnnotationPrivate::getNewAnnotationPrivate()
 {
-    return new BoxTagAnnotationPrivate();
+    return new BoxTagAnnotationPrivate( this->q_ptr );
 }

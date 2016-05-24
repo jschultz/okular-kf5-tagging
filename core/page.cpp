@@ -247,20 +247,22 @@ double Page::verticalOffset() const
 {
     //  This is all a bit silly, would be better simply to calcuate vertical offset when
     //  page if first populated.
-    if ( d->m_offset == -1 )
-    {
-        Document *doc = d->m_doc->m_parent;
-        uint thisPageNum = this->number();
-        double offset = 0;
-        for ( uint pageIt = 0; pageIt < thisPageNum; ++pageIt )
-        {
-            const Page *page = doc->page( pageIt );
-            page->d->m_offset = offset;
-            offset += page->height();
-        }
-        d->m_offset = offset;
-    }
-    return d->m_offset;
+//     if ( d->m_offset == -1 )
+//     {
+//         Document *doc = d->m_doc->m_parent;
+//         uint thisPageNum = this->number();
+//         double offset = 0;
+//         for ( uint pageIt = 0; pageIt < thisPageNum; ++pageIt )
+//         {
+//             const Page *page = doc->page( pageIt );
+//             page->d->m_offset = offset;
+//             offset += page->height();
+//         }
+//         d->m_offset = offset;
+//     }
+//     return d->m_offset;
+
+    return d->m_number;
 }
 
 RegularAreaRect * Page::wordAt( const NormalizedPoint &p, QString *word ) const

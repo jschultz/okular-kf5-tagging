@@ -73,6 +73,10 @@ class AnnotationPrivate
 
         Annotation::DisposeDataFunction m_disposeFunc;
         QVariant m_nativeId;
+
+    protected:
+        Q_DECLARE_PUBLIC( Annotation )
+        Annotation *q_ptr;
 };
 
 }

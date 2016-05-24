@@ -261,6 +261,11 @@ class OKULARCORE_EXPORT Annotation
          */
         virtual QDANode *node() const;
 
+        /**
+         * Returns the text reference (length and offset) of the tagging
+         */
+        virtual TextReference reference() const;
+
 //         /**
 //          * Returns the page of the annotation.
 //          */
@@ -1913,7 +1918,7 @@ class OKULARCORE_EXPORT TextTagAnnotation : public Annotation
         const RegularAreaRect * transformedTextArea () const;
 
         /**
-         * Returns reference (offset, length) of the text tagging in the document
+         * Returns the text reference (length and offset) of the tagging
          */
         TextReference reference() const;
 
@@ -1979,6 +1984,11 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          * Returns a const reference to the style object of the annotation.
          */
         const Style & style() const;
+
+        /**
+         * For internal use only. JS: Clean this up
+         */
+        QString textSection() const;
 
         /**
          * Returns the head (start) of the tagging
@@ -2051,6 +2061,11 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
          * Returns the box tag annotation as a pixmap.
          */
         QPixmap pixmap() const;
+
+//         /**
+//          * Returns the text reference (length and offset) of the tagging
+//          */
+//         TextReference reference() const;
 
 private:
         Q_DECLARE_PRIVATE( BoxTagAnnotation )

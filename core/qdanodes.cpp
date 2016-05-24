@@ -143,7 +143,7 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
                     qCWarning(OkularCoreDebug) << "QDANodeUtils::load annotation node inconsistent in annotation: " << annotation->uniqueName();
                     delete annotation;
                 }
-                else if ( static_cast<TextTagAnnotation *>( annotation )->reference().isNull() )
+                else if ( annotation->subType() == Annotation::ATTag && annotation->reference().isNull() )
                 {
                     qCWarning(OkularCoreDebug) << "QDANodeUtils::load annotation has null reference in annotation: " << annotation->uniqueName();
                     delete annotation;
