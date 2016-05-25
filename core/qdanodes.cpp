@@ -218,8 +218,8 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
     if ( this->m_creationDate.isValid() )
         e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
 
-    QHashIterator<QString, QString> attrIt( this->attributes );
-    while (attrIt.hasNext())
+    QHash<QString, QString>::const_iterator attrIt = this->attributes.constBegin(), attrEnd = this->attributes.constEnd();
+    for ( ; attrIt != attrEnd; ++attrIt )
     {
         QDomElement attrElement = document.createElement( QStringLiteral("attribute") );
         e.appendChild( attrElement );

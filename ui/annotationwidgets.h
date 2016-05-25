@@ -13,10 +13,12 @@
 #include <qwidget.h>
 
 #include "core/annotations.h"
+#include <klineedit.h>
 
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
+class QGridLayout;
 class QLabel;
 class QWidget;
 class KColorButton;
@@ -265,8 +267,10 @@ public:
 
     virtual ~TextTagAnnotationWidget();
 
-
     void applyChanges() Q_DECL_OVERRIDE;
+
+private slots:
+    void nodeChanged();
 
 protected:
     QWidget * createStyleWidget() Q_DECL_OVERRIDE;
@@ -275,8 +279,12 @@ protected:
 private:
     Okular::TextTagAnnotation * m_tTagAnn;
 
-    QComboBox * m_QDANode;
-    QLineEdit **m_attrName, **m_attrValue;
+    QComboBox   * m_QDANode;
+    QGridLayout * m_attrLay;
+    KLineEdit  ** m_attrName, **m_attrValue;
+
+    void loadAttributes( QWidget *widget );
+
 };
 
 class BoxTagAnnotationWidget
