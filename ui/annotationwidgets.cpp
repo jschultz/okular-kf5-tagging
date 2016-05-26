@@ -14,6 +14,7 @@
 #include <qgroupbox.h>
 #include <qlabel.h>
 #include <qlayout.h>
+#include <qscrollarea.h>
 #include <qspinbox.h>
 #include <qvariant.h>
 #include <kcolorbutton.h>
@@ -29,7 +30,6 @@
 
 #include "core/document.h"
 #include "guiutils.h"
-#include "qdanodes.h"
 
 #define FILEATTACH_ICONSIZE 48
 
@@ -780,7 +780,7 @@ void CaretAnnotationWidget::applyChanges()
 }
 
 TextTagAnnotationWidget::TextTagAnnotationWidget( Okular::Annotation * ann )
-    : AnnotationWidget( ann ), m_QDANode( 0 ), m_attrLay( 0 ), m_attrName( 0 ), m_attrValue( 0 )
+    : AnnotationWidget( ann ), m_nodeBox( 0 ), m_QDANode( 0 ), m_attrCount( 0 ), m_attrArea( 0 ), m_attrName( 0 ), m_attrValue( 0 )
 {
     m_tTagAnn = static_cast< Okular::TextTagAnnotation * >( ann );
 }
@@ -804,10 +804,10 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
 
     QLabel * tmplabel = new QLabel( i18n( "&Name:" ), widget );
     nodeLay->addWidget( tmplabel, 0, Qt::AlignRight );
-    m_QDANode = new KComboBox( widget );
-    m_QDANode->setEditable( true );
-    tmplabel->setBuddy( m_QDANode );
-    nodeLay->addWidget( m_QDANode, 0 );
+    m_nodeBox = new KComboBox( widget );
+    m_nodeBox->setEditable( true );
+    tmplabel->setBuddy( m_nodeBox );
+    nodeLay->addWidget( m_nodeBox, 0 );
 
     QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
     int i = 0;
@@ -815,19 +815,22 @@ QWidget * TextTagAnnotationWidget::createExtraWidget()
     {
         QPixmap pixmap(100,100);
         pixmap.fill((*nIt)->color());
-        m_QDANode->addItem( pixmap, (*nIt)->name() );
+        m_nodeBox->addItem( pixmap, (*nIt)->name() );
         if ( (*nIt)->uniqueName() == m_tTagAnn->node()->uniqueName() )
-            m_QDANode->setCurrentIndex( i );
+            m_nodeBox->setCurrentIndex( i );
         i++;
     }
 
-    m_attrLay = new QGridLayout( widget );
-    lay->addLayout ( m_attrLay );
+    m_attrArea = new QScrollArea( widget );
+    m_attrArea->setWidgetResizable( true );
+
+    lay->addWidget( m_attrArea );
 
     this->loadAttributes( widget );
 
-    connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SLOT(nodeChanged()) );
-    connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    connect( m_nodeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(nodeChanged()) );
+    connect( m_nodeBox, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
+    connect( m_nodeBox, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
 
     return widget;
 }
@@ -841,86 +844,105 @@ void TextTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
-    node->setName( m_QDANode->currentText() );
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_nodeBox->currentIndex() );
+    m_tTagAnn->setNode( node );
+    node->setName( m_nodeBox->currentText() );
 
-    //  Recreate the attribute hash table
-    int attrCount = m_tTagAnn->node()->attributes.count();
-    m_tTagAnn->node()->attributes = QHash< QString, QString>();
-    for ( int i = 0; i < attrCount; i++ )
+    //  Recreate the attribute hash table. Note extra line for potential new attribute.
+    m_tTagAnn->node()->attributes = QList < QPair< QString, QString> >();
+    for ( int i = 0; i < m_attrCount; i++ )
     {
         QString attrName  = m_attrName [i]->text();
         QString attrValue = m_attrValue[i]->text();
-        m_tTagAnn->node()->attributes[ attrName ] = attrValue;
+        if ( ! attrName.isEmpty() && ! attrValue.isEmpty() )
+            m_tTagAnn->node()->attributes.append( QPair< QString, QString>( attrName, attrValue) );
     }
 }
 
 void TextTagAnnotationWidget::loadAttributes( QWidget *widget )
 {
-    if ( m_attrName )
+    if ( m_attrCount )
     {
-        int attrCount = m_tTagAnn->node()->attributes.count();
-        for ( int i = 0; i < attrCount; i++ )
+        for ( int i = 0; i < m_attrCount; i++ )
         {
             disconnect( m_attrName[i],  0, 0, 0 );
             disconnect( m_attrValue[i], 0, 0, 0 );
             delete m_attrName[i];
             delete m_attrValue[i];
+
         }
         delete m_attrName;
         delete m_attrValue;
     }
 
-    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
-    m_tTagAnn->setNode( node );
+    m_QDANode = Okular::QDANodeUtils::QDANodes.at( m_nodeBox->currentIndex() );
 
-    int attrCount = node->attributes.count();
+    QWidget *attrWidget = new QWidget( widget );
+    QGridLayout *attrLay = new QGridLayout( attrWidget );
+    attrLay->setAlignment( Qt::AlignTop );
+    attrWidget->setLayout( attrLay );
+    m_attrArea->setWidget( attrWidget );
 
-    m_attrName = new KLineEdit *[ attrCount ];
-    m_attrValue = new KLineEdit *[ attrCount ];
-    QHash<QString, QString>::const_iterator attrIt = m_tTagAnn->node()->attributes.constBegin(), attrEnd = m_tTagAnn->node()->attributes.constEnd();
+    m_attrCount = m_QDANode->attributes.count() + 1;
+
+    m_attrName  = new KLineEdit *[ m_attrCount ];
+    m_attrValue = new KLineEdit *[ m_attrCount ];
+    QList < QPair< QString, QString> >::const_iterator attrIt = m_QDANode->attributes.constBegin(), attrEnd = m_QDANode->attributes.constEnd();
     int i = 0;
     for ( ; attrIt != attrEnd; ++attrIt )
     {
-        m_attrName[i]  = new KLineEdit( attrIt.key(), widget );
-        m_attrValue[i] = new KLineEdit( attrIt.value(), widget );
-        m_attrLay->addWidget( m_attrName[i], i, 0) ;
-        m_attrLay->addWidget( m_attrValue[i], i, 1) ;
+        m_attrName[i]  = new KLineEdit( attrIt->first,  widget );
+        m_attrValue[i] = new KLineEdit( attrIt->second, widget );
+        attrLay->addWidget( m_attrName[i],  i, 0) ;
+        attrLay->addWidget( m_attrValue[i], i, 1) ;
         connect( m_attrName [i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
         connect( m_attrValue[i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
         i++;
     }
+
+    //  Add blank space for new attribute
+    m_attrName[i]  = new KLineEdit( QString(), widget );
+    m_attrValue[i] = new KLineEdit( QString(), widget );
+    attrLay->addWidget( m_attrName[i],  i, 0) ;
+    attrLay->addWidget( m_attrValue[i], i, 1) ;
+    connect( m_attrName [i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    connect( m_attrValue[i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
 }
 
 void TextTagAnnotationWidget::nodeChanged()
 {
     this->loadAttributes( m_extraWidget );
-
-    emit dataChanged();
 }
 
 BoxTagAnnotationWidget::BoxTagAnnotationWidget( Okular::Annotation * ann )
-    : AnnotationWidget( ann ), m_QDANode( 0 )
+    : AnnotationWidget( ann ), m_nodeBox( 0 ), m_QDANode( 0 ), m_attrCount( 0 ), m_attrArea( 0 ), m_attrName( 0 ), m_attrValue( 0 )
 {
     m_tTagAnn = static_cast< Okular::BoxTagAnnotation * >( ann );
+}
+
+BoxTagAnnotationWidget::~BoxTagAnnotationWidget()
+{
+    delete m_attrName;
+    delete m_attrValue;
 }
 
 QWidget * BoxTagAnnotationWidget::createExtraWidget()
 {
     QWidget * widget = new QWidget();
-    widget->setWindowTitle( i18nc( "Node", "Node" ) );
+    widget->setWindowTitle( i18nc( "QDA Node name", "Node" ) );
 
     QVBoxLayout * lay = new QVBoxLayout( widget );
     lay->setMargin( 0 );
-    QHBoxLayout * nodelay = new QHBoxLayout();
-    lay->addLayout( nodelay );
+    lay->setAlignment( Qt::AlignTop );
+    QHBoxLayout * nodeLay = new QHBoxLayout();
+    lay->addLayout( nodeLay );
 
-    QLabel * tmplabel = new QLabel( i18n( "&Node:" ), widget );
-    nodelay->addWidget( tmplabel, 0, Qt::AlignRight );
-    m_QDANode = new KComboBox( widget );
-    m_QDANode->setEditable( true );
-    tmplabel->setBuddy( m_QDANode );
-    nodelay->addWidget( m_QDANode );
+    QLabel * tmplabel = new QLabel( i18n( "&Name:" ), widget );
+    nodeLay->addWidget( tmplabel, 0, Qt::AlignRight );
+    m_nodeBox = new KComboBox( widget );
+    m_nodeBox->setEditable( true );
+    tmplabel->setBuddy( m_nodeBox );
+    nodeLay->addWidget( m_nodeBox, 0 );
 
     QList< Okular::QDANode * >::const_iterator nIt = Okular::QDANodeUtils::QDANodes.constBegin(), nEnd = Okular::QDANodeUtils::QDANodes.constEnd();
     int i = 0;
@@ -928,14 +950,22 @@ QWidget * BoxTagAnnotationWidget::createExtraWidget()
     {
         QPixmap pixmap(100,100);
         pixmap.fill((*nIt)->color());
-        m_QDANode->addItem( pixmap, (*nIt)->name() );
+        m_nodeBox->addItem( pixmap, (*nIt)->name() );
         if ( (*nIt)->uniqueName() == m_tTagAnn->node()->uniqueName() )
-            m_QDANode->setCurrentIndex( i );
+            m_nodeBox->setCurrentIndex( i );
         i++;
     }
 
-    connect( m_QDANode, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
-    connect( m_QDANode, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    m_attrArea = new QScrollArea( widget );
+    m_attrArea->setWidgetResizable( true );
+
+    lay->addWidget( m_attrArea );
+
+    this->loadAttributes( widget );
+
+    connect( m_nodeBox, SIGNAL(currentIndexChanged(int)), this, SLOT(nodeChanged()) );
+    connect( m_nodeBox, SIGNAL(currentIndexChanged(int)), this, SIGNAL(dataChanged()) );
+    connect( m_nodeBox, SIGNAL(currentTextChanged(const QString &)), this, SIGNAL(dataChanged()) );
 
     return widget;
 }
@@ -949,10 +979,74 @@ void BoxTagAnnotationWidget::applyChanges()
 {
     AnnotationWidget::applyChanges();
 
-    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_QDANode->currentIndex() );
-    QString nodeName = m_QDANode->currentText();
+    Okular::QDANode * node = Okular::QDANodeUtils::QDANodes.at( m_nodeBox->currentIndex() );
     m_tTagAnn->setNode( node );
-    node->setName( nodeName );
+    node->setName( m_nodeBox->currentText() );
+
+    //  Recreate the attribute hash table. Note extra line for potential new attribute.
+    m_tTagAnn->node()->attributes = QList < QPair< QString, QString> >();
+    for ( int i = 0; i < m_attrCount; i++ )
+    {
+        QString attrName  = m_attrName [i]->text();
+        QString attrValue = m_attrValue[i]->text();
+        if ( ! attrName.isEmpty() && ! attrValue.isEmpty() )
+            m_tTagAnn->node()->attributes.append( QPair< QString, QString>( attrName, attrValue) );
+    }
+}
+
+void BoxTagAnnotationWidget::loadAttributes( QWidget *widget )
+{
+    if ( m_attrCount )
+    {
+        for ( int i = 0; i < m_attrCount; i++ )
+        {
+            disconnect( m_attrName[i],  0, 0, 0 );
+            disconnect( m_attrValue[i], 0, 0, 0 );
+            delete m_attrName[i];
+            delete m_attrValue[i];
+
+        }
+        delete m_attrName;
+        delete m_attrValue;
+    }
+
+    m_QDANode = Okular::QDANodeUtils::QDANodes.at( m_nodeBox->currentIndex() );
+
+    QWidget *attrWidget = new QWidget( widget );
+    QGridLayout *attrLay = new QGridLayout( attrWidget );
+    attrLay->setAlignment( Qt::AlignTop );
+    attrWidget->setLayout( attrLay );
+    m_attrArea->setWidget( attrWidget );
+
+    m_attrCount = m_QDANode->attributes.count() + 1;
+
+    m_attrName  = new KLineEdit *[ m_attrCount ];
+    m_attrValue = new KLineEdit *[ m_attrCount ];
+    QList < QPair< QString, QString> >::const_iterator attrIt = m_QDANode->attributes.constBegin(), attrEnd = m_QDANode->attributes.constEnd();
+    int i = 0;
+    for ( ; attrIt != attrEnd; ++attrIt )
+    {
+        m_attrName[i]  = new KLineEdit( attrIt->first,  widget );
+        m_attrValue[i] = new KLineEdit( attrIt->second, widget );
+        attrLay->addWidget( m_attrName[i],  i, 0) ;
+        attrLay->addWidget( m_attrValue[i], i, 1) ;
+        connect( m_attrName [i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
+        connect( m_attrValue[i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
+        i++;
+    }
+
+    //  Add blank space for new attribute
+    m_attrName[i]  = new KLineEdit( QString(), widget );
+    m_attrValue[i] = new KLineEdit( QString(), widget );
+    attrLay->addWidget( m_attrName[i],  i, 0) ;
+    attrLay->addWidget( m_attrValue[i], i, 1) ;
+    connect( m_attrName [i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
+    connect( m_attrValue[i], SIGNAL(textChanged(const QString &)), this, SIGNAL(dataChanged()) );
+}
+
+void BoxTagAnnotationWidget::nodeChanged()
+{
+    this->loadAttributes( m_extraWidget );
 }
 
 #include "moc_annotationwidgets.cpp"

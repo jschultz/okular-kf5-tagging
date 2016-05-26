@@ -10,6 +10,7 @@
 #ifndef _OKULAR_QDANODES_H_
 #define _OKULAR_QDANODES_H_
 
+#include <QtCore/QPair>
 #include <QtCore/QString>
 #include <QtCore/QDateTime>
 #include <QtCore/QLinkedList>
@@ -75,7 +76,7 @@ class OKULARCORE_EXPORT QDANode
         void removeAnnotation( Annotation *ann );
 
         //  JS: Should use methods?
-        QHash< QString, QString> attributes;
+        QList < QPair< QString, QString> > attributes;
 
     protected:
         QString m_uniqueName;

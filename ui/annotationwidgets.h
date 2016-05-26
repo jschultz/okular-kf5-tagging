@@ -12,13 +12,15 @@
 
 #include <qwidget.h>
 
-#include "core/annotations.h"
+#include "annotations.h"
+#include "qdanodes.h"
 #include <klineedit.h>
 
 class QCheckBox;
 class QComboBox;
 class QDoubleSpinBox;
 class QGridLayout;
+class QScrollArea;
 class QLabel;
 class QWidget;
 class KColorButton;
@@ -264,7 +266,6 @@ class TextTagAnnotationWidget
 
 public:
     explicit TextTagAnnotationWidget( Okular::Annotation * ann );
-
     virtual ~TextTagAnnotationWidget();
 
     void applyChanges() Q_DECL_OVERRIDE;
@@ -279,12 +280,13 @@ protected:
 private:
     Okular::TextTagAnnotation * m_tTagAnn;
 
-    QComboBox   * m_QDANode;
-    QGridLayout * m_attrLay;
-    KLineEdit  ** m_attrName, **m_attrValue;
+    QComboBox       * m_nodeBox;
+    Okular::QDANode * m_QDANode;
+    int               m_attrCount;
+    QScrollArea     * m_attrArea;
+    KLineEdit      ** m_attrName, **m_attrValue;
 
     void loadAttributes( QWidget *widget );
-
 };
 
 class BoxTagAnnotationWidget
@@ -294,8 +296,12 @@ class BoxTagAnnotationWidget
 
 public:
     explicit BoxTagAnnotationWidget( Okular::Annotation * ann );
+    virtual ~BoxTagAnnotationWidget();
 
     void applyChanges() Q_DECL_OVERRIDE;
+
+private slots:
+    void nodeChanged();
 
 protected:
     QWidget * createStyleWidget() Q_DECL_OVERRIDE;
@@ -304,7 +310,13 @@ protected:
 private:
     Okular::BoxTagAnnotation * m_tTagAnn;
 
-    QComboBox * m_QDANode;
+    QComboBox       * m_nodeBox;
+    Okular::QDANode * m_QDANode;
+    int               m_attrCount;
+    QScrollArea     * m_attrArea;
+    KLineEdit      ** m_attrName, **m_attrValue;
+
+    void loadAttributes( QWidget *widget );
 };
 
 #endif

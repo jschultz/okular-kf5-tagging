@@ -120,6 +120,8 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
             newModifyDate = QDateTime::fromString( e.attribute(QStringLiteral("modifyDate")), Qt::ISODate );
         newModifyDate = std::max ( newCreationDate, newModifyDate );
 
+        //  If node being loaded is more recently modified then overwrite existing node fields
+        //  and attributes.
         if ( newModifyDate >= std::max ( oldCreationDate, oldModifyDate ) )
         {
             if (! newCreationDate.isNull() )
@@ -130,6 +132,18 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
                 qdaNode->setAuthor( e.attribute(QStringLiteral("author")) );
             if ( e.hasAttribute( QStringLiteral("name") ) )
                 qdaNode->setName( e.attribute(QStringLiteral("name")) );
+
+            QDomElement attrElement = e.firstChildElement( QStringLiteral("attribute") );
+            qdaNode->attributes = QList < QPair< QString, QString> >();
+            while (! attrElement.isNull() )
+            {
+                QString attrName  = attrElement.attribute(QStringLiteral("name"));
+                QString attrValue = attrElement.attribute(QStringLiteral("value"));
+                if (! attrName.isNull() && ! attrValue.isNull() )
+                    qdaNode->attributes.append( QPair< QString, QString>( attrName, attrValue) );
+
+                attrElement = attrElement.nextSiblingElement( QStringLiteral("attribute") );
+            }
         }
         QDomElement annElement = e.firstChildElement( QStringLiteral("annotation") );
         while (! annElement.isNull() )
@@ -165,17 +179,6 @@ void QDANodeUtils::load( DocumentPrivate *doc_p, const QDomNode& node )
             annElement = annElement.nextSiblingElement( QStringLiteral("annotation") );
         }
 
-        QDomElement attrElement = e.firstChildElement( QStringLiteral("attribute") );
-        while (! attrElement.isNull() )
-        {
-            QString attrName  = attrElement.attribute(QStringLiteral("name"));
-            QString attrValue = attrElement.attribute(QStringLiteral("value"));
-            if (! attrName.isNull() && ! attrValue.isNull() )
-                qdaNode->attributes[ attrName ] = attrValue;
-
-            attrElement = attrElement.nextSiblingElement( QStringLiteral("attribute") );
-        }
-
         e = e.nextSiblingElement( QStringLiteral("node") );
     }
 }
@@ -186,7 +189,7 @@ QDANode::QDANode()
 }
 
 QDANode::QDANode( QString uniqueName )
-    : attributes ( QHash< QString, QString>() ),
+    : attributes ( QList < QPair< QString, QString> >() ),
       m_uniqueName( uniqueName ),
       m_name ( QString() ),
       m_color ( QDANodeUtils::tagColors[ QDANodeUtils::QDANodes.length() ] ),
@@ -218,13 +221,13 @@ void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
     if ( this->m_creationDate.isValid() )
         e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
 
-    QHash<QString, QString>::const_iterator attrIt = this->attributes.constBegin(), attrEnd = this->attributes.constEnd();
+    QList < QPair< QString, QString> >::const_iterator attrIt = this->attributes.constBegin(), attrEnd = this->attributes.constEnd();
     for ( ; attrIt != attrEnd; ++attrIt )
     {
         QDomElement attrElement = document.createElement( QStringLiteral("attribute") );
         e.appendChild( attrElement );
-        attrElement.setAttribute( QStringLiteral("name"),  attrIt.key() );
-        attrElement.setAttribute( QStringLiteral("value"), attrIt.value() );
+        attrElement.setAttribute( QStringLiteral("name"),  attrIt->first );
+        attrElement.setAttribute( QStringLiteral("value"), attrIt->second );
     }
 
     QList< Annotation * >::const_iterator annIt = m_annotations.constBegin(), annEnd = m_annotations.constEnd();
