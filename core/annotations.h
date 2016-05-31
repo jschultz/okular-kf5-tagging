@@ -266,10 +266,10 @@ class OKULARCORE_EXPORT Annotation
          */
         virtual TextReference reference() const;
 
-//         /**
-//          * Returns the page of the annotation.
-//          */
-//         const Page * page() const;
+        /**
+         * Returns the document of the annotation.
+         */
+        const Document * document() const;
 
         /**
          * Returns the page of the tag annotation. Unimplemented for other annotation types.

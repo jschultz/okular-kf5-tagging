@@ -40,7 +40,10 @@ class OKULARCORE_EXPORT QDANodeUtils
 
         static QDANode * retrieve( QString m_uniqueName );
 
-        static void storeQDANodes( QDomElement & QDAElement, QDomDocument & doc );
+        /**
+         * Store all nodes with annotations in a given document, along with those annotation.
+         */
+        static void storeQDANodes( Document * doc, QDomElement & domElement, QDomDocument & domDocument );
         static void load( DocumentPrivate *doc_p, const QDomNode& node);
 };
 
@@ -53,7 +56,7 @@ class OKULARCORE_EXPORT QDANode
         QDANode( QString uniqueName );
         ~QDANode();
 
-        void store( QDomNode & QDANode, QDomDocument & document ) const;
+        void store( Document * doc, QDomElement & domElement, QDomDocument & domDocument ) const;
 
         QString uniqueName() const;
 

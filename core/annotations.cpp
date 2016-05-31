@@ -593,6 +593,13 @@ void Annotation::setPrevNode( QDANode *node )
 {
 }
 
+const Document * Annotation::document() const
+{
+    Q_D( const Annotation );
+
+    return d->m_page->m_doc->m_parent;
+}
+
 uint Annotation::pageNum() const
 {
     return 0;

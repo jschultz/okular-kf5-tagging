@@ -1271,7 +1271,7 @@ void DocumentPrivate::saveDocumentInfo() const
     // 1.A Save QDA nodes
     QDomElement QDAElement = doc.createElement( QStringLiteral("QDA") );
     root.appendChild( QDAElement );
-    QDANodeUtils::storeQDANodes( QDAElement, doc );
+    QDANodeUtils::storeQDANodes( this->m_parent, QDAElement, doc );
 
     // 2.1. Save page attributes (bookmark state, annotations, ... ) to DOM
     QDomElement pageList = doc.createElement( QStringLiteral("pageList") );

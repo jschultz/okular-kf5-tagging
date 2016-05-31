@@ -79,12 +79,12 @@ QDANode * QDANodeUtils::retrieve( QString m_uniqueName )
     return 0;
 }
 
-void QDANodeUtils::storeQDANodes( QDomElement & QDAElement, QDomDocument & doc )
+void QDANodeUtils::storeQDANodes( Document * doc, QDomElement & domElement, QDomDocument & domDocument )
 {
     QList< QDANode * >::const_iterator nIt = QDANodeUtils::QDANodes.constBegin(), nEnd = QDANodeUtils::QDANodes.constEnd();
     for ( ; nIt != nEnd; ++nIt )
     {
-        (*nIt)->store( QDAElement, doc );
+        (*nIt)->store( doc, domElement, domDocument );
     }
 }
 
@@ -205,39 +205,46 @@ QDANode::~QDANode()
 {
 }
 
-void QDANode::store( QDomNode & QDANode, QDomDocument & document ) const
+void QDANode::store( Document * doc, QDomElement & domElement, QDomDocument & domDocument ) const
 {
-    QDomElement e = document.createElement( QStringLiteral("node") );
-    QDANode.appendChild( e );
-
-    if ( !this->m_name.isEmpty() )
-        e.setAttribute( QStringLiteral("name"), this->m_name );
-    if ( !this->m_uniqueName.isEmpty() )
-        e.setAttribute( QStringLiteral("uniqueName"), this->m_uniqueName );
-    if ( !this->m_author.isEmpty() )
-        e.setAttribute( QStringLiteral("author"), this->m_author );
-    if ( this->m_modifyDate.isValid() )
-        e.setAttribute( QStringLiteral("modifyDate"), this->m_modifyDate.toString(Qt::ISODate) );
-    if ( this->m_creationDate.isValid() )
-        e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
-
-    QList < QPair< QString, QString> >::const_iterator attrIt = this->attributes.constBegin(), attrEnd = this->attributes.constEnd();
-    for ( ; attrIt != attrEnd; ++attrIt )
-    {
-        QDomElement attrElement = document.createElement( QStringLiteral("attribute") );
-        e.appendChild( attrElement );
-        attrElement.setAttribute( QStringLiteral("name"),  attrIt->first );
-        attrElement.setAttribute( QStringLiteral("value"), attrIt->second );
-    }
-
     QList< Annotation * >::const_iterator annIt = m_annotations.constBegin(), annEnd = m_annotations.constEnd();
+    bool nodeStored = false;
+    QDomElement e;
     for ( ; annIt != annEnd; ++annIt )
     {
-        QDomElement annElement = document.createElement( QStringLiteral("annotation") );
-        annElement.setAttribute( QStringLiteral("type"), (*annIt)->subType() );
-        e.appendChild( annElement );
-        (*annIt)->store( annElement, document );
-        qCDebug(OkularCoreDebug) << "save annotation:" << (*annIt)->uniqueName();
+        if ( (*annIt)->document() == doc && ! nodeStored )
+        {
+            nodeStored = true;
+
+            e = domDocument.createElement( QStringLiteral("node") );
+            domElement.appendChild( e );
+
+            if ( !this->m_name.isEmpty() )
+                e.setAttribute( QStringLiteral("name"), this->m_name );
+            if ( !this->m_uniqueName.isEmpty() )
+                e.setAttribute( QStringLiteral("uniqueName"), this->m_uniqueName );
+            if ( !this->m_author.isEmpty() )
+                e.setAttribute( QStringLiteral("author"), this->m_author );
+            if ( this->m_modifyDate.isValid() )
+                e.setAttribute( QStringLiteral("modifyDate"), this->m_modifyDate.toString(Qt::ISODate) );
+            if ( this->m_creationDate.isValid() )
+                e.setAttribute( QStringLiteral("creationDate"), this->m_creationDate.toString(Qt::ISODate) );
+
+            QList < QPair< QString, QString> >::const_iterator attrIt = this->attributes.constBegin(), attrEnd = this->attributes.constEnd();
+            for ( ; attrIt != attrEnd; ++attrIt )
+            {
+                QDomElement attrElement = domDocument.createElement( QStringLiteral("attribute") );
+                e.appendChild( attrElement );
+                attrElement.setAttribute( QStringLiteral("name"),  attrIt->first );
+                attrElement.setAttribute( QStringLiteral("value"), attrIt->second );
+            }
+
+            QDomElement annElement = domDocument.createElement( QStringLiteral("annotation") );
+            annElement.setAttribute( QStringLiteral("type"), (*annIt)->subType() );
+            e.appendChild( annElement );
+            (*annIt)->store( annElement, domDocument );
+            qCDebug(OkularCoreDebug) << "save annotation:" << (*annIt)->uniqueName();
+        }
     }
 }
 
