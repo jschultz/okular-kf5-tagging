@@ -729,26 +729,27 @@ RegularAreaRect *TextPage::TextReferenceArea ( const TextReference ref ) const
 
     TextList::ConstIterator it = d->m_words.constBegin(), end = d->m_words.constEnd();
     int entity_offset = 0;
-    QString str = (*it)->text();
-    uint entity_len = str.length();
-    while ( it != end && entity_offset + entity_len <= ref_offset )
+    uint entity_len = 0;
+    while ( it != end )
     {
+        entity_len = (*it)->text().length();
+        if ( entity_offset + entity_len > ref_offset )
+            break;
+
         entity_offset += entity_len;
         it++;
-        str = (*it)->text();
-        entity_len = str.length();
     }
     if ( entity_offset + entity_len > ref_offset )
     {
-        while ( it != end && entity_offset + entity_len < ref_offset + ref_length )
+        ret->appendShape( (*it)->area, MergeRight );
+        entity_offset += entity_len;
+        it++;
+        while ( it != end && entity_offset < ref_offset + ref_length )
         {
             ret->appendShape( (*it)->area, MergeRight );
-            entity_offset += entity_len;
+            entity_offset += (*it)->text().length();
             it++;
-            str = (*it)->text();
-            entity_len = str.length();
         }
-        ret->appendShape( (*it)->area, MergeRight );
     }
 
     return ret;

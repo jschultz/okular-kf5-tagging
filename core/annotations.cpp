@@ -3208,13 +3208,16 @@ TextTagAnnotation::TextTagAnnotation( const Page * page, TextReference ref )
 
     d->m_ref = ref;
     d->m_textArea = page->TextReferenceArea( ref );
-    NormalizedRect rect = d->m_textArea->first();
+    NormalizedRect rect = NormalizedRect();;
     int end = d->m_textArea->count();
-    for (int i = 1; i < end; i++ )
-    {
+    if ( end == 0 )
+        qCWarning(OkularCoreDebug) << __func__ << " text reference area is null: " << d->m_uniqueName;
+
+    for (int i = 0; i < end; i++ )
         rect |= d->m_textArea->at( i );
-    }
-    d->m_boundary = rect;
+
+    d->m_boundary            = rect;
+    d->m_transformedBoundary = rect;
 }
 
 TextTagAnnotation::TextTagAnnotation( Annotation * head, const Page * page, TextReference ref )
@@ -3248,15 +3251,6 @@ TextTagAnnotation::TextTagAnnotation( Document *doc, const QDomNode & node )
 
     d->m_doc = doc;
     d->setAnnotationProperties( node );
-
-    d->m_textArea = doc->page( d->m_pageNum )->TextReferenceArea( d->m_ref );
-    NormalizedRect rect = d->m_textArea->first();
-    int end = d->m_textArea->count();
-    for (int i = 1; i < end; i++ )
-    {
-        rect |= d->m_textArea->at( i );
-    }
-    d->m_boundary = rect;
 }
 
 TextTagAnnotation::~TextTagAnnotation()
@@ -3517,6 +3511,25 @@ void TextTagAnnotationPrivate::resetTransformation()
         m_transformedTextArea->append (m_textArea->at(i));
 }
 
+static void buildTextReferenceArea( TextTagAnnotationPrivate *tTagAnnP, const Page *page )
+{
+    //  Recreate the text reference area and boundaries.
+    tTagAnnP->m_textArea = page->TextReferenceArea( tTagAnnP->m_ref );
+    tTagAnnP->m_transformedTextArea = new RegularAreaRect;
+    tTagAnnP->m_boundary = Okular::NormalizedRect();
+    int end = tTagAnnP->m_textArea->count();
+    if ( end == 0 )
+        qCWarning(OkularCoreDebug) << __func__ << " text reference area is null: " << tTagAnnP->m_uniqueName;
+
+    for (int i = 0; i < end; i++ )
+    {
+        NormalizedRect rect = tTagAnnP->m_textArea->at(i);
+        tTagAnnP->m_transformedTextArea->append (rect);
+        tTagAnnP->m_boundary |= rect;
+    }
+    tTagAnnP->m_transformedBoundary = tTagAnnP->m_boundary;
+}
+
 void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
     Q_Q ( Annotation );
@@ -3576,20 +3589,7 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
             {
                 m_pageNum = pageNum;
                 m_ref = { pageOffset, pageLength };
-
-                //  Recreate the text reference area and boundaries.
-                m_textArea = page->TextReferenceArea( m_ref );
-                m_transformedTextArea = new RegularAreaRect;
-                m_boundary = m_textArea->first();
-                int end = m_textArea->count();
-                for (int i = 0; i < end; i++ )
-                {
-                    NormalizedRect rect = m_textArea->at(i);
-                    m_transformedTextArea->append (rect);
-                    m_boundary |= rect;
-                }
-                m_transformedBoundary = m_boundary;
-
+                buildTextReferenceArea( this, page );
                 headAnn = q;
             }
             else
@@ -3609,6 +3609,8 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 
                 TextTagAnnotation *ann = new TextTagAnnotation( headAnn, page, { 0, pageLength } );
                 static_cast<TextTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
+
+                buildTextReferenceArea( static_cast<TextTagAnnotationPrivate *>(ann->d_ptr), page );
             }
         }
     }
