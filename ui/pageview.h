@@ -202,6 +202,8 @@ Q_OBJECT
         // don't want to expose classes in here
         class PageViewPrivate * d;
 
+        void handleGenericRightButtonRelease( QMouseEvent * e );
+
     private slots:
         // used to decouple the notifyViewportChanged calle
         void slotRealNotifyViewportChanged(bool smoothMove);

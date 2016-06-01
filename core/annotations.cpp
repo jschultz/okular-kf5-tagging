@@ -3213,6 +3213,7 @@ TextTagAnnotation::TextTagAnnotation( const Page * page, TextReference ref )
 {
     Q_D( TextTagAnnotation );
 
+    d->m_pageNum = page->number();
     d->m_ref = ref;
     d->m_textArea = page->TextReferenceArea( ref );
     NormalizedRect rect = NormalizedRect();;
@@ -3676,15 +3677,17 @@ class Okular::BoxTagAnnotationPrivate : public Okular::AnnotationPrivate
         BoxTagAnnotation * q_ptr;
 };
 
-BoxTagAnnotation::BoxTagAnnotation( const NormalizedRect *rect )
+BoxTagAnnotation::BoxTagAnnotation( const Page * page, const NormalizedRect *rect )
     : Annotation( *new BoxTagAnnotationPrivate( this ) )
 {
     Q_D( BoxTagAnnotation );
+
+    d->m_pageNum = page->number();
     d->m_boundary = *rect;
 }
 
-BoxTagAnnotation::BoxTagAnnotation( Annotation * head, const NormalizedRect *rect )
-    : BoxTagAnnotation( rect )
+BoxTagAnnotation::BoxTagAnnotation( Annotation * head, const Page * page, const NormalizedRect *rect )
+    : BoxTagAnnotation( page, rect )
 {
     Q_D( BoxTagAnnotation );
 
@@ -4051,7 +4054,7 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
                     boundaryRight,
                     pageOffset + pageLength );
 
-                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, &rect );
+                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, page, &rect );
                 static_cast<BoxTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
             }
 
@@ -4070,7 +4073,7 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
                     boundaryRight,
                     pageLength );
 
-                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, &rect );
+                BoxTagAnnotation *ann = new BoxTagAnnotation( headAnn, page, &rect );
                 static_cast<BoxTagAnnotationPrivate *>(ann->d_ptr)->m_pageNum = pageNum;
             }
         }

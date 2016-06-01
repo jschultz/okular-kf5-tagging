@@ -175,21 +175,34 @@ bool NormalizedRect::intersects( double l, double t, double r, double b ) const
 
 NormalizedRect NormalizedRect::operator| (const NormalizedRect & r) const
 {
-	NormalizedRect ret;
- // todo !
-	ret.left=qMin(left,r.left);
+ // todo ! JS: Done!
+    if ( isNull() )
+        return r;
+    else if ( r.isNull() )
+        return *this;
+    else
+    {
+        NormalizedRect ret;
+
+        ret.left=qMin(left,r.left);
         ret.top=qMin(top,r.top);
         ret.bottom=qMax(bottom,r.bottom);
         ret.right=qMax(right,r.right);
-	return ret;
+        return ret;
+    }
 }
 
 NormalizedRect& NormalizedRect::operator|= (const NormalizedRect & r)
 {
-    left = qMin( left, r.left );
-    top = qMin( top, r.top );
-    bottom = qMax( bottom, r.bottom );
-    right = qMax( right, r.right );
+    if ( isNull() )
+        *this = r;
+    else if (! r.isNull() )
+    {
+        left = qMin( left, r.left );
+        top = qMin( top, r.top );
+        bottom = qMax( bottom, r.bottom );
+        right = qMax( right, r.right );
+    }
     return *this;
 }
 

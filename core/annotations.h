@@ -1936,12 +1936,12 @@ class OKULARCORE_EXPORT BoxTagAnnotation : public Annotation
         /**
          * Creates a new box tagging.
          */
-        BoxTagAnnotation( const NormalizedRect *rect );
+        BoxTagAnnotation( const Page * page, const NormalizedRect *rect );
 
         /**
          * Creates a new box tagging that extends an existing tagging to a new page
          */
-        BoxTagAnnotation( Annotation * head, const NormalizedRect *rect );
+        BoxTagAnnotation( Annotation * head, const Page * page, const NormalizedRect *rect );
 
         /**
          * Creates a new text tagging from the xml @p description. This constructor is only

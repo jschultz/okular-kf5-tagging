@@ -971,7 +971,7 @@ void PageViewPrivate::createBoxTagAnnotationsfromSelection( QRect selectionRect,
     {
         PageViewItem * item = *iIt;
 
-        Okular::Page * okularPage = (Okular::Page *) item->page();
+        Okular::Page * page = (Okular::Page *) item->page();
         QRect intersect = selectionRect & item->croppedGeometry();
         if (! intersect.isNull( ) )
         {
@@ -979,7 +979,7 @@ void PageViewPrivate::createBoxTagAnnotationsfromSelection( QRect selectionRect,
             Okular::NormalizedRect* tagRect = new Okular::NormalizedRect (intersect, item->uncroppedWidth(), item->uncroppedHeight() );
             if ( ! head )
             {
-                ann = new Okular::BoxTagAnnotation( tagRect );
+                ann = new Okular::BoxTagAnnotation( page, tagRect );
                 head = ann;
 
                 ann->setCreationDate( QDateTime::currentDateTime() );
@@ -987,9 +987,9 @@ void PageViewPrivate::createBoxTagAnnotationsfromSelection( QRect selectionRect,
                 ann->setNode (node);
             }
             else
-                ann = new Okular::BoxTagAnnotation( head, tagRect );
+                ann = new Okular::BoxTagAnnotation( head, page, tagRect );
 
-            document->addPageAnnotation( okularPage->number(), ann );
+            document->addPageAnnotation( page->number(), ann );
         }
     }
 }
@@ -2281,41 +2281,6 @@ void PageView::mousePressEvent( QMouseEvent * e )
                         d->leftClickTimer.start( QApplication::doubleClickInterval() + 10 );
                 }
             }
-            else if ( rightButton && !d->mouseAnn )
-            {
-                PageViewItem * pageItem = pickItemOnPoint( eventPos.x(), eventPos.y() );
-                if ( pageItem )
-                {
-                    // find out normalized mouse coords inside current item
-                    const QRect & itemRect = pageItem->uncroppedGeometry();
-                    double nX = pageItem->absToPageX(eventPos.x());
-                    double nY = pageItem->absToPageY(eventPos.y());
-
-                    const QLinkedList< const Okular::ObjectRect *> annRects = pageItem->page()->objectRects( Okular::ObjectRect::OAnnotation, nX, nY, itemRect.width(), itemRect.height() );
-
-                    if ( !annRects.isEmpty() )
-                    {
-                        AnnotationPopup popup( d->document, AnnotationPopup::MultiAnnotationMode, this );
-
-                        foreach ( const Okular::ObjectRect * annRect, annRects )
-                        {
-                            Okular::Annotation * ann = ( (Okular::AnnotationObjectRect *)annRect )->annotation();
-                            if ( ann && (ann->subType() == Okular::Annotation::ATTag
-                              || ann->subType() == Okular::Annotation::ABTag) )
-                                popup.addAnnotation( ann->head(), ann->head()->pageNum() );
-                            else if ( ann && (ann->subType() != Okular::Annotation::AWidget) )
-                                popup.addAnnotation( ann, pageItem->pageNumber() );
-
-                        }
-
-                        connect( &popup, &AnnotationPopup::openAnnotationWindow,
-                                 this, &PageView::openAnnotationWindow );
-
-                        popup.exec( this, e->globalPos() );
-                    }
-
-                }
-            }
             break;
 
         case Okular::Settings::EnumMouseMode::Zoom:     // set first corner of the zoom rect
@@ -2425,6 +2390,116 @@ void PageView::mousePressEvent( QMouseEvent * e )
                 textSelectionClear();
             }
             break;
+    }
+}
+
+void PageView::handleGenericRightButtonRelease( QMouseEvent * e )
+{
+    //  These variables are already calculated in the calling functino/
+    const QPoint eventPos = contentAreaPoint( e->pos() );
+    PageViewItem * pageItem = pickItemOnPoint( eventPos.x(), eventPos.y() );
+    const QPoint pressPos = contentAreaPoint( mapFromGlobal( d->mousePressPos ) );
+    const PageViewItem * pageItemPressPos = pickItemOnPoint( pressPos.x(), pressPos.y() );
+
+    if ( pageItem && pageItem == pageItemPressPos &&
+            ( (d->mousePressPos - e->globalPos()).manhattanLength() < QApplication::startDragDistance() ) )
+    {
+        double nX = pageItem->absToPageX(eventPos.x());
+        double nY = pageItem->absToPageY(eventPos.y());
+        const Okular::ObjectRect * rect;
+        rect = pageItem->page()->objectRect( Okular::ObjectRect::Action, nX, nY, pageItem->uncroppedWidth(), pageItem->uncroppedHeight() );
+        if ( rect )
+        {
+            // handle right click over a link
+            const Okular::Action * link = static_cast< const Okular::Action * >( rect->object() );
+            // creating the menu and its actions
+            QMenu menu( this );
+            QAction * actProcessLink = menu.addAction( i18n( "Follow This Link" ) );
+            QAction * actStopSound = 0;
+            if ( link->actionType() == Okular::Action::Sound ) {
+                actProcessLink->setText( i18n( "Play this Sound" ) );
+                if ( Okular::AudioPlayer::instance()->state() == Okular::AudioPlayer::PlayingState ) {
+                    actStopSound = menu.addAction( i18n( "Stop Sound" ) );
+                }
+            }
+            QAction * actCopyLinkLocation = 0;
+            if ( dynamic_cast< const Okular::BrowseAction * >( link ) )
+                actCopyLinkLocation = menu.addAction( QIcon::fromTheme( QStringLiteral("edit-copy") ), i18n( "Copy Link Address" ) );
+            QAction * res = menu.exec( e->globalPos() );
+            if ( res )
+            {
+                if ( res == actProcessLink )
+                {
+                    d->document->processAction( link );
+                }
+                else if ( res == actCopyLinkLocation )
+                {
+                    const Okular::BrowseAction * browseLink = static_cast< const Okular::BrowseAction * >( link );
+                    QClipboard *cb = QApplication::clipboard();
+                    cb->setText( browseLink->url().toDisplayString(), QClipboard::Clipboard );
+                    if ( cb->supportsSelection() )
+                        cb->setText( browseLink->url().toDisplayString(), QClipboard::Selection );
+                }
+                else if ( res == actStopSound )
+                {
+                    Okular::AudioPlayer::instance()->stopPlaybacks();
+                }
+            }
+        }
+        else
+        {
+            // a link can move us to another page or even to another document, there's no point in trying to
+            //  process the click on the image once we have processes the click on the link
+            rect = pageItem->page()->objectRect( Okular::ObjectRect::Image, nX, nY, pageItem->uncroppedWidth(), pageItem->uncroppedHeight() );
+            if ( rect )
+            {
+                // handle right click over a image
+            }
+            else
+            {
+                //  Handle right click over annotation
+
+                // find out normalized mouse coords inside current item
+                const QRect & itemRect = pageItem->uncroppedGeometry();
+                double nX = pageItem->absToPageX(eventPos.x());
+                double nY = pageItem->absToPageY(eventPos.y());
+
+                const QLinkedList< const Okular::ObjectRect *> annRects = pageItem->page()->objectRects( Okular::ObjectRect::OAnnotation, nX, nY, itemRect.width(), itemRect.height() );
+
+                if ( !annRects.isEmpty() )
+                {
+                    AnnotationPopup popup( d->document, AnnotationPopup::MultiAnnotationMode, this );
+
+                    foreach ( const Okular::ObjectRect * annRect, annRects )
+                    {
+                        Okular::Annotation * ann = ( (Okular::AnnotationObjectRect *)annRect )->annotation();
+                        if ( ann && (ann->subType() == Okular::Annotation::ATTag
+                        || ann->subType() == Okular::Annotation::ABTag) )
+                            popup.addAnnotation( ann->head(), ann->head()->pageNum() );
+                        else if ( ann && (ann->subType() != Okular::Annotation::AWidget) )
+                            popup.addAnnotation( ann, pageItem->pageNumber() );
+
+                    }
+
+                    connect( &popup, &AnnotationPopup::openAnnotationWindow,
+                            this, &PageView::openAnnotationWindow );
+
+                    popup.exec( this, e->globalPos() );
+                }
+                else
+                {
+                    // right click (if not within 5 px of the press point, the mode
+                    // had been already changed to 'Selection' instead of 'Normal')
+                    emit rightClick( pageItem->page(), e->globalPos() );
+                }
+            }
+        }
+    }
+    else
+    {
+        // right click (if not within 5 px of the press point, the mode
+        // had been already changed to 'Selection' instead of 'Normal')
+        emit rightClick( pageItem ? pageItem->page() : 0, e->globalPos() );
     }
 }
 
@@ -2587,76 +2662,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                 }
             }
             else if ( rightButton && !d->mouseAnn )
-            {
-                if ( pageItem && pageItem == pageItemPressPos &&
-                     ( (d->mousePressPos - e->globalPos()).manhattanLength() < QApplication::startDragDistance() ) )
-                {
-                    double nX = pageItem->absToPageX(eventPos.x());
-                    double nY = pageItem->absToPageY(eventPos.y());
-                    const Okular::ObjectRect * rect;
-                    rect = pageItem->page()->objectRect( Okular::ObjectRect::Action, nX, nY, pageItem->uncroppedWidth(), pageItem->uncroppedHeight() );
-                    if ( rect )
-                    {
-                        // handle right click over a link
-                        const Okular::Action * link = static_cast< const Okular::Action * >( rect->object() );
-                        // creating the menu and its actions
-                        QMenu menu( this );
-                        QAction * actProcessLink = menu.addAction( i18n( "Follow This Link" ) );
-                        QAction * actStopSound = 0;
-                        if ( link->actionType() == Okular::Action::Sound ) {
-                            actProcessLink->setText( i18n( "Play this Sound" ) );
-                            if ( Okular::AudioPlayer::instance()->state() == Okular::AudioPlayer::PlayingState ) {
-                                actStopSound = menu.addAction( i18n( "Stop Sound" ) );
-                            }
-                        }
-                        QAction * actCopyLinkLocation = 0;
-                        if ( dynamic_cast< const Okular::BrowseAction * >( link ) )
-                            actCopyLinkLocation = menu.addAction( QIcon::fromTheme( QStringLiteral("edit-copy") ), i18n( "Copy Link Address" ) );
-                        QAction * res = menu.exec( e->globalPos() );
-                        if ( res )
-                        {
-                            if ( res == actProcessLink )
-                            {
-                                d->document->processAction( link );
-                            }
-                            else if ( res == actCopyLinkLocation )
-                            {
-                                const Okular::BrowseAction * browseLink = static_cast< const Okular::BrowseAction * >( link );
-                                QClipboard *cb = QApplication::clipboard();
-                                cb->setText( browseLink->url().toDisplayString(), QClipboard::Clipboard );
-                                if ( cb->supportsSelection() )
-                                    cb->setText( browseLink->url().toDisplayString(), QClipboard::Selection );
-                            }
-                            else if ( res == actStopSound )
-                            {
-                                Okular::AudioPlayer::instance()->stopPlaybacks();
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // a link can move us to another page or even to another document, there's no point in trying to
-                        //  process the click on the image once we have processes the click on the link
-                        rect = pageItem->page()->objectRect( Okular::ObjectRect::Image, nX, nY, pageItem->uncroppedWidth(), pageItem->uncroppedHeight() );
-                        if ( rect )
-                        {
-                            // handle right click over a image
-                        }
-                        else
-                        {
-                            // right click (if not within 5 px of the press point, the mode
-                            // had been already changed to 'Selection' instead of 'Normal')
-                            emit rightClick( pageItem->page(), e->globalPos() );
-                        }
-                    }
-                }
-                else
-                {
-                    // right click (if not within 5 px of the press point, the mode
-                    // had been already changed to 'Selection' instead of 'Normal')
-                    emit rightClick( pageItem ? pageItem->page() : 0, e->globalPos() );
-                }
-            }
+                handleGenericRightButtonRelease( e );
             }break;
 
         case Okular::Settings::EnumMouseMode::Zoom:
@@ -2750,8 +2756,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
             // if mouse is released and selection is null this is a rightClick
             if ( rightButton && !d->mouseSelecting )
             {
-                PageViewItem * pageItem = pickItemOnPoint( eventPos.x(), eventPos.y() );
-                emit rightClick( pageItem ? pageItem->page() : 0, e->globalPos() );
+                handleGenericRightButtonRelease( e );
                 break;
             }
 
@@ -2929,8 +2934,7 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
             // if mouse is released and selection is null this is a rightClick
             if ( rightButton && !d->mouseSelecting )
             {
-                PageViewItem * pageItem = pickItemOnPoint( eventPos.x(), eventPos.y() );
-                emit rightClick( pageItem ? pageItem->page() : 0, e->globalPos() );
+                handleGenericRightButtonRelease( e );
                 break;
             }
 
@@ -3169,6 +3173,15 @@ void PageView::mouseReleaseEvent( QMouseEvent * e )
                                 if (node)
                                     d->createTextTagAnnotationsfromSelection( node );
                             }
+                        }
+                    }
+                    else
+                    {
+                        // If nothing else going on, process right click as normal
+                        if ( rightButton )
+                        {
+                            handleGenericRightButtonRelease( e );
+                            break;
                         }
                     }
                 }
