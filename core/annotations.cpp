@@ -3540,7 +3540,7 @@ static void buildTextReferenceArea( TextTagAnnotationPrivate *tTagAnnP, const Pa
 
 void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
-    Q_Q ( Annotation );
+    Q_Q ( TextTagAnnotation );
 
     Annotation *headAnn = 0;
 
@@ -3556,7 +3556,6 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
             return;
     }
 
-    // loop through the whole children looking for a 'text' element
     QDomNode subNode = node.firstChild();
     while( subNode.isElement() )
     {
@@ -3567,9 +3566,11 @@ void TextTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         &&   e.hasAttribute( QStringLiteral("node") )
         &&   ! m_node )
         {
-            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
-            if (! m_node)
-                m_node = new QDANode();
+            QDANode *node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+            if (! node)
+                node = new QDANode();
+
+            q->setNode( node );
         }
 
         if ( e.tagName() == "textref" )
@@ -3980,7 +3981,7 @@ void BoxTagAnnotation::store( QDomNode & node, QDomDocument & document ) const
 
 void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
 {
-    Q_Q ( Annotation );
+    Q_Q ( BoxTagAnnotation );
 
     Annotation *headAnn = 0;
 
@@ -3996,7 +3997,6 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
             return;
     }
 
-    // loop through the whole children looking for a 'text' element
     QDomNode subNode = node.firstChild();
     while( subNode.isElement() )
     {
@@ -4007,9 +4007,11 @@ void BoxTagAnnotationPrivate::setAnnotationProperties( const QDomNode& node )
         &&   e.hasAttribute( QStringLiteral("node") )
         &&   ! m_node )
         {
-            m_node = QDANodeUtils::retrieve( e.attribute( "node" ) );
-            if (! m_node)
-                m_node = new QDANode();
+            QDANode *node = QDANodeUtils::retrieve( e.attribute( "node" ) );
+            if (! node)
+                node = new QDANode();
+
+            q->setNode( node );
         }
 
         if ( e.tagName() == "imageref" )
